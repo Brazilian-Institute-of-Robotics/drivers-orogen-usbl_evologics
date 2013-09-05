@@ -1,0 +1,60 @@
+name "usbl_orogen"
+# Optionally declare the version number
+# version "0.1"
+using_library "usbl_evologics"
+# If new data types need to be defined, they have to be put in a separate C++
+# header, and this header will be loaded here
+# import_types_from "usbl_orogenType.hpp"
+
+import_types_from "usbl_evologics/DriverTypes.hpp"
+
+# If the component/deployments use data types that are defined in other oroGen
+# projects, these projects should be imported there as well.
+# import_types_from "base"
+
+# Declare a new task context (i.e., a component)
+#
+# The corresponding C++ class can be edited in tasks/Task.hpp and
+# tasks/Task.cpp, and will be put in the usbl_orogen namespace.
+task_context "Usbl" do
+   # A configuration property (here, a std::string). Its value can be retrieved
+   # in the C++ code with # _config_value.get() and _config_value.set(new_value).
+   property "source_level", "int"
+   property "source_level_control", "bool"
+   property "low_gain", "bool"
+   property "carrier_waveform_id", "int"
+   property "local_address", "int"
+   property "remote_address", "int"
+   property "cluster_size", "int"
+   property "packet_time", "int"
+   property "retry_count", "int"
+   property "retry_timeout", "int"
+   property "idle_timeout", "int"
+   property "sound_speed", "int"
+   property "im_retry", "int"
+
+   # An input port, i.e. an object from which the component gets data from
+   # other components' outputs
+   #
+   # Data can be retrieved using _input.read(value), which returns true if data
+   # was available, and false otherwise. _input.connected() returns if this
+   # input is connected to an output or not.
+   input_port "massage_input", "/usbl_evologics/SendInstantMessage"
+   input_port "burstdata_input", "/std/string"
+
+   # An output port, i.e. an object to which the component pushes data so that
+   # it is transmitted to other components' inputs
+   #
+   # Data can be written using _output.write(value). _output.connected() returns
+   # if this output is connected to an input or not.
+   output_port "messsage_output", "/usbl_evologics/ReceiveInstantMessage"
+   output_port "stats", "/usbl_evologics/DeviceStats"
+   output_port "connection_status", "/usbl_evologics/ConnectionStatus"
+
+   # If you want that component's updateHook() to be executed when the "input"
+   # port gets data, uncomment this and comment the 'periodic' line
+   # port_driven "input"
+   # By default, the task will be periodic with a period of 0.1
+   periodic 0.1
+end
+

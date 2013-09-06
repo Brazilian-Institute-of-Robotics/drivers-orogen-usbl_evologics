@@ -4,7 +4,7 @@
 #define USBL_OROGEN_USBL_TASK_HPP
 
 #include "usbl_orogen/UsblBase.hpp"
-
+#include <usbl_evologics/Driver.hpp>
 namespace usbl_orogen {
 
     /*! \class Usbl 
@@ -25,6 +25,7 @@ namespace usbl_orogen {
     {
 	friend class UsblBase;
     protected:
+        usbl_evologics::Driver driver;
 
 
 
@@ -103,6 +104,8 @@ namespace usbl_orogen {
          * before calling start() again.
          */
         void cleanupHook();
+        bool storePermanently();
+        std::string getConnectionStateAsString();
     };
 }
 

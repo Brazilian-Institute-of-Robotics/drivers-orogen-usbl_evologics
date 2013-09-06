@@ -19,27 +19,28 @@ import_types_from "usbl_evologics/DriverTypes.hpp"
 task_context "Usbl" do
    # A configuration property (here, a std::string). Its value can be retrieved
    # in the C++ code with # _config_value.get() and _config_value.set(new_value).
-   property "source_level", "int"
-   property "source_level_control", "bool"
-   property "low_gain", "bool"
-   property "carrier_waveform_id", "int"
-   property "local_address", "int"
-   property "remote_address", "int"
-   property "cluster_size", "int"
-   property "packet_time", "int"
-   property "retry_count", "int"
-   property "retry_timeout", "int"
-   property "idle_timeout", "int"
-   property "sound_speed", "int"
-   property "im_retry", "int"
+   property "source_level", "int", 0
+   property "source_level_control", "bool", false
+   property "low_gain", "bool", false
+   property "carrier_waveform_id", "int", 0
+   property "local_address", "int", 1
+   property "remote_address", "int", 2
+   property "cluster_size", "int", 10
+   property "packet_time", "int", 750
+   property "retry_count", "int", 50
+   property "retry_timeout", "int", 1500
+   property "idle_timeout", "int", 120
+   property "sound_speed", "int", 1500
+   property "im_retry", "int", 100
 
+   property "device_string", "/std/string"
    # An input port, i.e. an object from which the component gets data from
    # other components' outputs
    #
    # Data can be retrieved using _input.read(value), which returns true if data
    # was available, and false otherwise. _input.connected() returns if this
    # input is connected to an output or not.
-   input_port "massage_input", "/usbl_evologics/SendInstantMessage"
+   input_port "message_input", "/usbl_evologics/SendInstantMessage"
    input_port "burstdata_input", "/std/string"
 
    # An output port, i.e. an object to which the component pushes data so that
@@ -47,10 +48,19 @@ task_context "Usbl" do
    #
    # Data can be written using _output.write(value). _output.connected() returns
    # if this output is connected to an input or not.
-   output_port "messsage_output", "/usbl_evologics/ReceiveInstantMessage"
+   output_port "message_output", "/usbl_evologics/ReceiveInstantMessage"
+   output_port "burstdata_output", "/std/string"
    output_port "stats", "/usbl_evologics/DeviceStats"
    output_port "connection_status", "/usbl_evologics/ConnectionStatus"
 
+
+    operation("storePermanently").
+        returns("bool").
+        doc("stores the current settings to the usbl")
+
+    operation("getConnectionStateAsString").
+        returns("/std/string").
+        doc("Get the current ConnectionStatus")
    # If you want that component's updateHook() to be executed when the "input"
    # port gets data, uncomment this and comment the 'periodic' line
    # port_driven "input"

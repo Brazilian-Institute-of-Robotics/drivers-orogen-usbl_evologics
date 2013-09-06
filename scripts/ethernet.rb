@@ -9,6 +9,7 @@ Orocos.run 'usbl_orogen::ImProducer' => 'improd',
     improd = Orocos.name_service.get 'improd'
     burstdataprod = Orocos.name_service.get 'burstdataprod'
     #USBL Config
+    usbl.device_string = "tcp://192.168.0.248:9200" 
     usbl.source_level = 0
     usbl.source_level_control = false
     usbl.low_gain = false
@@ -32,15 +33,15 @@ Orocos.run 'usbl_orogen::ImProducer' => 'improd',
     burstdataprod.message_content = "Hallo Welt"
 
     #Connections
-    improd.im_output.connect_to usbl.message_input 
+    #improd.im_output.connect_to usbl.message_input 
     burstdataprod.burstdata_output.connect_to usbl.burstdata_input
 
     #Starting
     burstdataprod.start
     improd.start
 
-    #usbl.configure
-    #usbl.start
+    usbl.configure
+    usbl.start
     #usbl.storePermanently
     while true
 #        puts "something"

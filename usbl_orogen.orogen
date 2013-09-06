@@ -65,7 +65,7 @@ task_context "Usbl" do
    # port gets data, uncomment this and comment the 'periodic' line
    # port_driven "input"
    # By default, the task will be periodic with a period of 0.1
-   periodic 0.1
+   periodic 1
 end
 
 task_context "ImProducer" do

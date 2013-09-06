@@ -9,10 +9,11 @@ Orocos.run 'usbl_orogen::ImProducer' => 'improd',
     improd = Orocos.name_service.get 'improd'
     burstdataprod = Orocos.name_service.get 'burstdataprod'
     #USBL Config
+    usbl.device_string = "serial:///dev/ttyUSB0:19200" 
     usbl.source_level = 0
     usbl.source_level_control = false
     usbl.low_gain = false
-    usbl.carrier_waveform_id = 0
+    usbl.carrier_waveform_id = 1
     usbl.local_address = 2
     usbl.remote_address = 1
     usbl.cluster_size = 10
@@ -32,7 +33,7 @@ Orocos.run 'usbl_orogen::ImProducer' => 'improd',
     burstdataprod.message_content = "Hallo Welt"
 
     #Connections
-    improd.im_output.connect_to usbl.message_input 
+    #improd.im_output.connect_to usbl.message_input 
     burstdataprod.burstdata_output.connect_to usbl.burstdata_input
 
     #Starting
@@ -43,6 +44,6 @@ Orocos.run 'usbl_orogen::ImProducer' => 'improd',
     usbl.start
     #usbl.storePermanently
     while true
-#        puts "something"
+        puts usbl.getConnectionStateAsString
     end
 end

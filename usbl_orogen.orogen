@@ -68,3 +68,15 @@ task_context "Usbl" do
    periodic 0.1
 end
 
+task_context "ImProducer" do
+    property "message_content", "/std/string", "Hallo Welt!"
+    property "destination", "int", 2
+    property "delivery_report", "bool", true
+    output_port "im_output", "/usbl_evologics/SendInstantMessage"
+    periodic 2
+end
+task_context "BurstDataProducer" do
+    property "message_content", "/std/string", "Hallo Welt!"
+    output_port "burstdata_output", "/std/string"
+    periodic 2
+end

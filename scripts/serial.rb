@@ -13,8 +13,8 @@ Orocos.run 'usbl_orogen::ImProducer' => 'improd',
     usbl.source_level_control = false
     usbl.low_gain = false
     usbl.carrier_waveform_id = 0
-    usbl.local_address = 1
-    usbl.remote_address = 2
+    usbl.local_address = 2
+    usbl.remote_address = 1
     usbl.cluster_size = 10
     usbl.packet_time = 750
     usbl.retry_count = 50
@@ -25,7 +25,7 @@ Orocos.run 'usbl_orogen::ImProducer' => 'improd',
 
     #IM Producer Config
     improd.message_content = "Hallo Welt"
-    improd.destination = 2
+    improd.destination = 1
     improd.delivery_report = true
 
     #Burstdata Producer Config
@@ -39,8 +39,8 @@ Orocos.run 'usbl_orogen::ImProducer' => 'improd',
     burstdataprod.start
     improd.start
 
-    #usbl.configure
-    #usbl.start
+    usbl.configure
+    usbl.start
     #usbl.storePermanently
     while true
 #        puts "something"

@@ -13,5 +13,5 @@
   <depend package="dummy-dependency-n-1" />
   <depend package="dummy-dependency-n" />
   -->
-  <depend package="drivers/usbl_driver" />
+  <depend package="drivers/usbl_evologics" />
 </package>

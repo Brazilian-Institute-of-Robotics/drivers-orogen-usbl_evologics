@@ -105,7 +105,6 @@ namespace usbl_orogen {
          */
         void cleanupHook();
         bool storePermanently();
-        std::string getConnectionStateAsString();
     };
 }
 

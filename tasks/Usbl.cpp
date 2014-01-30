@@ -151,6 +151,3 @@ bool Usbl::storePermanently()
     driver.storeSettings();
 
 }
-std::string Usbl::getConnectionStateAsString(){
-    return getConnectionStatusString(driver.getConnectionStatus());
-}

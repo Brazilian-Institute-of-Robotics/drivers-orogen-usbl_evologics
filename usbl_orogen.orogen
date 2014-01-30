@@ -58,9 +58,9 @@ task_context "Usbl" do
         returns("bool").
         doc("stores the current settings to the usbl")
 
-    operation("getConnectionStateAsString").
-        returns("/std/string").
-        doc("Get the current ConnectionStatus")
+#    operation("getConnectionStateAsString").
+#        returns("/std/string").
+#        doc("Get the current ConnectionStatus")
    # If you want that component's updateHook() to be executed when the "input"
    # port gets data, uncomment this and comment the 'periodic' line
    # port_driven "input"

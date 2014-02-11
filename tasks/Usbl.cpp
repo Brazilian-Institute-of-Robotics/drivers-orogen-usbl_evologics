@@ -1,6 +1,7 @@
 /* Generated from orogen/lib/orogen/templates/tasks/Task.cpp */
 
 #include "Usbl.hpp"
+#include <usbl_evologics/DriverTypes.hpp>
 
 using namespace usbl_orogen;
 
@@ -97,27 +98,24 @@ void Usbl::updateHook()
     }
     while (driver.getInboxSize()){
         _message_output.write(driver.dropInstantMessage());
+        writeOutPosition();
     }
-
-
-    
-
-    
-
-    
 }
 
-
+void Usbl::writeOutPosition(){
+    usbl_evologics::Position pos = driver.getPosition(false);
+    base::samples::RigidBodyState rbs;
+    rbs.position(0) = pos.x;
+    rbs.position(1) = pos.y;
+    rbs.position(2) = pos.z;
+    rbs.time = base::Time::now();
+    _position_sample.write(rbs);
+}
 
 void Usbl::errorHook()
 {
     
     UsblBase::errorHook();
-    
-
-    
-
-    
 }
 
 

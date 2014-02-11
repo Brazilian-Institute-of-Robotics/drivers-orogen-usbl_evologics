@@ -5,7 +5,7 @@ using_library "usbl_evologics"
 # If new data types need to be defined, they have to be put in a separate C++
 # header, and this header will be loaded here
 # import_types_from "usbl_orogenType.hpp"
-
+import_types_from "base"
 import_types_from "usbl_evologics/DriverTypes.hpp"
 
 # If the component/deployments use data types that are defined in other oroGen
@@ -52,6 +52,7 @@ task_context "Usbl" do
    output_port "burstdata_output", "/std/string"
    output_port "stats", "/usbl_evologics/DeviceStats"
    output_port "connection_status", "/usbl_evologics/ConnectionStatus"
+   output_port "position_sample", "/base/samples/RigidBodyState"
 
 
     operation("storePermanently").

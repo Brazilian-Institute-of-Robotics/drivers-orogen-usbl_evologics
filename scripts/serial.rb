@@ -2,16 +2,16 @@ require 'orocos'
 
 include Orocos
 Orocos.initialize
-Orocos.run 'usbl_orogen::ImProducer' => 'improd',
-    'usbl_orogen::Usbl' => 'usbl', 
-    'usbl_orogen::BurstDataProducer' => 'burstdataprod' do
-    usbl = Orocos.name_service.get 'usbl'
-    improd = Orocos.name_service.get 'improd'
-    burstdataprod = Orocos.name_service.get 'burstdataprod'
+Orocos.run 'usbl_orogen::ImProducer' => 'serial_improd',
+    'usbl_orogen::Usbl' => 'serial_usbl', 
+    'usbl_orogen::BurstDataProducer' => 'serial_burstdataprod' do
+    usbl = Orocos.name_service.get 'serial_usbl'
+    improd = Orocos.name_service.get 'serial_improd'
+    burstdataprod = Orocos.name_service.get 'serial_burstdataprod'
     #USBL Config
     usbl.device_string = "serial:///dev/ttyUSB0:19200" 
-    usbl.source_level = 0
-    usbl.source_level_control = false
+    usbl.source_level = 3
+    usbl.source_level_control = true
     usbl.low_gain = false
     usbl.carrier_waveform_id = 1
     usbl.local_address = 2
@@ -34,7 +34,7 @@ Orocos.run 'usbl_orogen::ImProducer' => 'improd',
 
     #Connections
     #improd.im_output.connect_to usbl.message_input 
-    burstdataprod.burstdata_output.connect_to usbl.burstdata_input
+    #burstdataprod.burstdata_output.connect_to usbl.burstdata_input
 
     #Starting
     burstdataprod.start
@@ -44,6 +44,7 @@ Orocos.run 'usbl_orogen::ImProducer' => 'improd',
     usbl.start
     #usbl.storePermanently
     while true
-        puts usbl.getConnectionStateAsString
+#        puts usbl.getConnectionStateAsString
+        sleep 0.1
     end
 end

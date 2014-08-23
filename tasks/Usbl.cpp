@@ -80,7 +80,14 @@ void Usbl::updateHook()
     UsblBase::updateHook();
     usbl_evologics::SendInstantMessage send_im;
     while (_message_input.read(send_im) == RTT::NewData){
-        driver.sendInstantMessage(&send_im);
+        try {
+            std::string messange = std::string(reinterpret_cast<char*> (send_im.buffer), send_im.len);
+            std::cout << "message" << send_im.len << std::endl;
+            driver.sendInstantMessage(&send_im);
+        }
+        catch (...){
+            std::cout << "cancel IM" << std::endl;
+        }
     }
     std::string buffer;
     while (_burstdata_input.read(buffer) == RTT::NewData){
@@ -97,9 +104,14 @@ void Usbl::updateHook()
         }
     }
     while (driver.getInboxSize()){
-        _message_output.write(driver.dropInstantMessage());
+        try {
+            _message_output.write(driver.dropInstantMessage());
+        } catch (...) {
+            std::cout << "cancel IM" << std::endl;
+        }
         writeOutPosition();
     }
+    writeOutPosition();
 }
 
 void Usbl::writeOutPosition(){

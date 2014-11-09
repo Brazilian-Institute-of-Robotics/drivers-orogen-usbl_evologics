@@ -68,10 +68,11 @@ void ImProducer::updateHook()
     im.destination = _destination.get();
     im.deliveryReport = _delivery_report.get();
     im.deliveryStatus = usbl_evologics::PENDING; 
+    im.buffer.resize(_message_content.get().size());
     for (int i = 0; i<_message_content.get().size(); i++){
         im.buffer[i] = _message_content.get().at(i);
     }
-    im.len = _message_content.get().size();
+    //im.len = _message_content.get().size();
     _im_output.write(im);
 }
 

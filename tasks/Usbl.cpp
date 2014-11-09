@@ -81,8 +81,9 @@ void Usbl::updateHook()
     usbl_evologics::SendInstantMessage send_im;
     while (_message_input.read(send_im) == RTT::NewData){
         try {
-            std::string messange = std::string(reinterpret_cast<char*> (send_im.buffer), send_im.len);
-            std::cout << "message" << send_im.len << std::endl;
+            //std::string messange = std::string(reinterpret_cast<char*> (send_im.buffer), send_im.len);
+            std::string messange = std::string(send_im.buffer.begin(), send_im.buffer.end());
+            std::cout << "message" << send_im.buffer.size() << std::endl;
             driver.sendInstantMessage(&send_im);
         }
         catch (...){

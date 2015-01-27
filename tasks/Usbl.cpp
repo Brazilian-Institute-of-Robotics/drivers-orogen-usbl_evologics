@@ -79,17 +79,13 @@ void Usbl::updateHook()
     
     UsblBase::updateHook();
     usbl_evologics::SendInstantMessage send_im;
-    while (_message_input.read(send_im) == RTT::NewData){
-        try {
-            //std::string messange = std::string(reinterpret_cast<char*> (send_im.buffer), send_im.len);
-            std::string messange = std::string(send_im.buffer.begin(), send_im.buffer.end());
-            std::cout << "message" << send_im.buffer.size() << std::endl;
-            driver.sendInstantMessage(&send_im);
-        }
-        catch (...){
-            std::cout << "cancel IM" << std::endl;
-        }
+    if (driver.getInstantMessageDeliveryStatus() != usbl_evologics::PENDING) {
+        if (_message_input.read(send_im) == RTT::NewData) {
+            std::cout << "Send IM" << send_im.destination << std::endl;
+            driver.sendInstantMessage(send_im);
+        } 
     }
+    //TODO write out the status of the InstantMessages
     std::string buffer;
     while (_burstdata_input.read(buffer) == RTT::NewData){
         driver.sendBurstData(reinterpret_cast<const uint8_t*>(buffer.c_str()), buffer.size());
@@ -105,23 +101,26 @@ void Usbl::updateHook()
         }
     }
     while (driver.getInboxSize()){
-        try {
-            _message_output.write(driver.dropInstantMessage());
-        } catch (...) {
-            std::cout << "cancel IM" << std::endl;
-        }
+        _message_output.write(driver.dropInstantMessage());
+        std::cout << "cancel IM" << std::endl;
         writeOutPosition();
     }
+    std::cout << "write out position" << std::endl;
     writeOutPosition();
+    std::cout << "write out position end" << std::endl;
 }
 
 void Usbl::writeOutPosition(){
     usbl_evologics::Position pos = driver.getPosition(false);
     base::samples::RigidBodyState rbs;
+    std::cout << "Position vorm Rausschreiben" << std::endl;
+    std::cout << "X: " << pos.x << std::endl;
+    std::cout << "Y: " << pos.y << std::endl;
+    std::cout << "Z: " << pos.z << std::endl;
     rbs.position(0) = pos.x;
     rbs.position(1) = pos.y;
     rbs.position(2) = pos.z;
-    rbs.time = base::Time::now();
+    rbs.time = pos.time;
     _position_sample.write(rbs);
 }
 

@@ -33,7 +33,7 @@ Orocos.run 'usbl_orogen::ImProducer' => 'serial_improd',
     burstdataprod.message_content = "Hallo Welt"
 
     #Connections
-    #improd.im_output.connect_to usbl.message_input 
+    improd.im_output.connect_to usbl.message_input 
     #burstdataprod.burstdata_output.connect_to usbl.burstdata_input
 
     #Starting

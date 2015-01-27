@@ -5,6 +5,7 @@
 
 #include "usbl_orogen/UsblBase.hpp"
 #include <usbl_evologics/Driver.hpp>
+#include <usbl_evologics/DriverTypes.hpp>
 namespace usbl_orogen {
 
     /*! \class Usbl 
@@ -26,6 +27,9 @@ namespace usbl_orogen {
 	friend class UsblBase;
     protected:
         usbl_evologics::Driver driver;
+        //Sended Instant Messages
+        std::vector<usbl_evologics::SendInstantMessage> waiting_instant_messages;
+
 
 
 

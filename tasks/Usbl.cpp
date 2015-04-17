@@ -155,7 +155,7 @@ void Usbl::cleanupHook()
 
     
 }
-bool Usbl::storePermanently()
+void Usbl::storePermanently()
 {
     std::cout <<"Store Settings permanently on device" << std::endl;
     driver.storeSettings();

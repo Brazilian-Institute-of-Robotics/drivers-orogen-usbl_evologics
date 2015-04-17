@@ -31,7 +31,6 @@ task_context "Usbl" do
 
 
     operation("storePermanently").
-        returns("bool").
         doc("stores the current settings to the usbl")
 
    periodic 1

@@ -108,7 +108,7 @@ namespace usbl_orogen {
          * before calling start() again.
          */
         void cleanupHook();
-        bool storePermanently();
+        void storePermanently();
         void writeOutPosition();
     };
 }

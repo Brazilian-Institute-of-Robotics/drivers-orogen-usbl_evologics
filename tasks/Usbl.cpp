@@ -19,7 +19,7 @@ Usbl::~Usbl()
 {
 }
 
-
+usbl_evologics::ReverseMode reverse_mode = usbl_evologics::REVERSE_POSITION_SENDER;
 
 /// The following lines are template definitions for the various state machine
 // hooks defined by Orocos::RTT. See Usbl.hpp for more detailed
@@ -33,7 +33,7 @@ bool Usbl::configureHook()
     
     if (! UsblBase::configureHook())
         return false;
-    driver.open(_device_string.get());
+    driver.open(_device_string.get(), reverse_mode);
 
     driver.setCarrierWaveformId(_carrier_waveform_id.get());
     driver.setClusterSize(_cluster_size.get());
@@ -76,11 +76,17 @@ bool Usbl::startHook()
 
 void Usbl::updateHook()
 {
-    
+    std::cout << "USBL orogen update hook\n";
+
     UsblBase::updateHook();
     usbl_evologics::SendInstantMessage send_im;
     if (driver.getInstantMessageDeliveryStatus() != usbl_evologics::PENDING) {
-        if (_message_input.read(send_im) == RTT::NewData) {
+
+	if(driver.newPositionAvailable()){
+		std::cout << "usbl orogen: new pos avail. for sending to AUV!\n";
+		driver.sendPositionToAUV();
+	}
+	else if (_message_input.read(send_im) == RTT::NewData) {
             std::cout << "Send IM" << send_im.destination << std::endl;
             driver.sendInstantMessage(send_im);
         } 
@@ -93,8 +99,8 @@ void Usbl::updateHook()
     _stats.write(driver.getDeviceStatus());
     _connection_status.write(driver.getConnectionStatus());
     while (driver.hasPacket()){
-        uint8_t buffer[100];
-        if (size_t len = driver.read(buffer, 100)){
+        uint8_t buffer[2000];
+        if (size_t len = driver.read(buffer, 2000)){
             char const* buffer_as_string = reinterpret_cast<char const*>(buffer);
             std::string s = std::string(buffer_as_string, len);
             _burstdata_output.write(s);

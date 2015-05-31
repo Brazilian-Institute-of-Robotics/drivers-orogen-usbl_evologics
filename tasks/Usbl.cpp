@@ -45,6 +45,8 @@ bool Usbl::configureHook()
     driver.setRemoteAddress(_remote_address.get());
     driver.setRetryCount(_retry_count.get());
     driver.setRetryTimeout(_retry_timeout.get());
+    driver.setKeepOnline(_keep_online.get());
+    driver.setPositionEnable(_position_enable.get());
     driver.setSourceLevel(_source_level.get());
     driver.setSourceLevelControl(_source_level_control.get());
     driver.setSpeedSound(_sound_speed.get());

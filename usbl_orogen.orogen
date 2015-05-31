@@ -14,6 +14,8 @@ task_context "Usbl" do
    property "packet_time", "int", 750
    property "retry_count", "int", 50
    property "retry_timeout", "int", 1500
+   property "keep_online", "int", 0
+   property "position_enable", "int", 1
    property "idle_timeout", "int", 120
    property "sound_speed", "int", 1500
    property "im_retry", "int", 100

@@ -9,13 +9,13 @@ Orocos.run 'usbl_orogen::ImProducer' => 'serial_improd',
     improd = Orocos.name_service.get 'serial_improd'
     burstdataprod = Orocos.name_service.get 'serial_burstdataprod'
     #USBL Config
-    usbl.device_string = "serial:///dev/ttyUSB0:19200" 
+    usbl.device_string = "serial:///dev/ttyUSB_USBL:19200" 
     usbl.source_level = 3
-    usbl.source_level_control = true
+    usbl.source_level_control = false
     usbl.low_gain = false
-    usbl.carrier_waveform_id = 1
-    usbl.local_address = 2
-    usbl.remote_address = 1
+    usbl.carrier_waveform_id = 0
+    usbl.local_address = 1
+    usbl.remote_address = 2
     usbl.cluster_size = 10
     usbl.packet_time = 750
     usbl.retry_count = 50
@@ -25,20 +25,20 @@ Orocos.run 'usbl_orogen::ImProducer' => 'serial_improd',
     usbl.im_retry = 100
 
     #IM Producer Config
-    improd.message_content = "Hallo Welt"
-    improd.destination = 1
+    improd.message_content = "Hallo Land - hier spricht das AUV"
+    improd.destination = 2
     improd.delivery_report = true
 
     #Burstdata Producer Config
-    burstdataprod.message_content = "Hallo Welt"
+    burstdataprod.message_content = "Hallo Land - hier spricht das AUV"
 
     #Connections
     improd.im_output.connect_to usbl.message_input 
     #burstdataprod.burstdata_output.connect_to usbl.burstdata_input
 
     #Starting
-    burstdataprod.start
-    improd.start
+  #  burstdataprod.start
+#    improd.start
 
     usbl.configure
     usbl.start

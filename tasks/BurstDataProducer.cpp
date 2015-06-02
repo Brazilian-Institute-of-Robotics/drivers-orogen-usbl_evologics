@@ -2,7 +2,7 @@
 
 #include "BurstDataProducer.hpp"
 
-using namespace usbl_orogen;
+using namespace usbl_evologics;
 
 BurstDataProducer::BurstDataProducer(std::string const& name, TaskCore::TaskState initial_state)
     : BurstDataProducerBase(name, initial_state)

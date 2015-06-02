@@ -3,10 +3,10 @@
 #ifndef USBL_OROGEN_USBL_TASK_HPP
 #define USBL_OROGEN_USBL_TASK_HPP
 
-#include "usbl_orogen/UsblBase.hpp"
+#include "usbl_evologics/UsblBase.hpp"
 #include <usbl_evologics/Driver.hpp>
 #include <usbl_evologics/DriverTypes.hpp>
-namespace usbl_orogen {
+namespace usbl_evologics {
 
     /*! \class Usbl 
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
@@ -17,7 +17,7 @@ namespace usbl_orogen {
      * The name of a TaskContext is primarily defined via:
      \verbatim
      deployment 'deployment_name'
-         task('custom_task_name','usbl_orogen::Usbl')
+         task('custom_task_name','usbl_evologics::Usbl')
      end
      \endverbatim
      *  It can be dynamically adapted when the deployment is called with a prefix argument. 
@@ -38,7 +38,7 @@ namespace usbl_orogen {
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
          * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
          */
-        Usbl(std::string const& name = "usbl_orogen::Usbl", TaskCore::TaskState initial_state = Stopped);
+        Usbl(std::string const& name = "usbl_evologics::Usbl", TaskCore::TaskState initial_state = Stopped);
 
         /** TaskContext constructor for Usbl 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 

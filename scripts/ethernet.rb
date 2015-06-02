@@ -2,9 +2,9 @@ require 'orocos'
 
 include Orocos
 Orocos.initialize
-Orocos.run 'usbl_orogen::ImProducer' => 'improd',
-    'usbl_orogen::Usbl' => 'usbl', 
-    'usbl_orogen::BurstDataProducer' => 'burstdataprod' do
+Orocos.run 'usbl_evologics::ImProducer' => 'improd',
+    'usbl_evologics::Usbl' => 'usbl', 
+    'usbl_evologics::BurstDataProducer' => 'burstdataprod' do
     usbl = Orocos.name_service.get 'usbl'
     improd = Orocos.name_service.get 'improd'
     burstdataprod = Orocos.name_service.get 'burstdataprod'

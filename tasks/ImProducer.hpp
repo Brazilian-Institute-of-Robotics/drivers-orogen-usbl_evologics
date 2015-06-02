@@ -3,9 +3,9 @@
 #ifndef USBL_OROGEN_IMPRODUCER_TASK_HPP
 #define USBL_OROGEN_IMPRODUCER_TASK_HPP
 
-#include "usbl_orogen/ImProducerBase.hpp"
+#include "usbl_evologics/ImProducerBase.hpp"
 
-namespace usbl_orogen {
+namespace usbl_evologics {
 
     /*! \class ImProducer 
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
@@ -16,7 +16,7 @@ namespace usbl_orogen {
      * The name of a TaskContext is primarily defined via:
      \verbatim
      deployment 'deployment_name'
-         task('custom_task_name','usbl_orogen::ImProducer')
+         task('custom_task_name','usbl_evologics::ImProducer')
      end
      \endverbatim
      *  It can be dynamically adapted when the deployment is called with a prefix argument. 
@@ -33,7 +33,7 @@ namespace usbl_orogen {
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
          * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
          */
-        ImProducer(std::string const& name = "usbl_orogen::ImProducer", TaskCore::TaskState initial_state = Stopped);
+        ImProducer(std::string const& name = "usbl_evologics::ImProducer", TaskCore::TaskState initial_state = Stopped);
 
         /** TaskContext constructor for ImProducer 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 

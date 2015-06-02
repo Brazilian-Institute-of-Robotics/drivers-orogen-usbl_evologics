@@ -3,7 +3,7 @@
 #include "ImProducer.hpp"
 #include <usbl_evologics/DriverTypes.hpp>
 
-using namespace usbl_orogen;
+using namespace usbl_evologics;
 
 ImProducer::ImProducer(std::string const& name, TaskCore::TaskState initial_state)
     : ImProducerBase(name, initial_state)

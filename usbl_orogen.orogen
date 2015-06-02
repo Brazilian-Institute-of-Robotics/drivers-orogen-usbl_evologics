@@ -1,4 +1,4 @@
-name "usbl_orogen"
+name "usbl_evologics"
 using_library "usbl_evologics"
 import_types_from "base"
 import_types_from "usbl_evologics/DriverTypes.hpp"

@@ -3,7 +3,7 @@
 #include "Usbl.hpp"
 #include <usbl_evologics/DriverTypes.hpp>
 
-using namespace usbl_orogen;
+using namespace usbl_evologics;
 
 Usbl::Usbl(std::string const& name, TaskCore::TaskState initial_state)
     : UsblBase(name, initial_state)

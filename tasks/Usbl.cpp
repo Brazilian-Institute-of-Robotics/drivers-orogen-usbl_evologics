@@ -129,7 +129,8 @@ void Usbl::writeOutPosition(){
     rbs.position(1) = pos.y;
     rbs.position(2) = pos.z;
     rbs.time = pos.time;
-    _position_sample.write(rbs);
+    rbs.cov_position = pow(pos.accouracy, 2.0) * base::Matrix3d::Identity();
+    _position_samples.write(rbs);
 }
 
 void Usbl::errorHook()

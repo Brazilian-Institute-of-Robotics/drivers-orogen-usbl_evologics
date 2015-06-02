@@ -29,7 +29,7 @@ task_context "Usbl" do
    output_port "burstdata_output", "/std/string"
    output_port "stats", "/usbl_evologics/DeviceStats"
    output_port "connection_status", "/usbl_evologics/ConnectionStatus"
-   output_port "position_sample", "/base/samples/RigidBodyState"
+   output_port "position_samples", "/base/samples/RigidBodyState"
 
 
     operation("storePermanently").

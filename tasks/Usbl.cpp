@@ -51,7 +51,7 @@ bool Usbl::configureHook()
     driver.setSourceLevelControl(_source_level_control.get());
     driver.setSpeedSound(_sound_speed.get());
 
-
+    do_surface = false;
     
     
     return true;
@@ -85,7 +85,7 @@ void Usbl::updateHook()
     if (driver.getInstantMessageDeliveryStatus() != usbl_evologics::PENDING) {
 		std::cout << "usbl orogen: deliv status is NOT pending\n";
 
-	if(driver.newPositionAvailable()){
+	if(driver.newPositionAvailable() && _send_position_to_mobile){
 		std::cout << "usbl orogen: new pos avail. for sending to AUV!\n";
 		driver.sendPositionToAUV();
 	}
@@ -117,9 +117,14 @@ void Usbl::updateHook()
         std::cout << "cancel IM" << std::endl;
         writeOutPosition();
     }
-//    std::cout << "write out position" << std::endl;
-      writeOutPosition();
-//    std::cout << "write out position end" << std::endl;
+    std::cout << "write out position" << std::endl;
+
+    if( driver.newPositionAvailable() )
+	writeOutPosition();
+
+    std::cout << "write out position end" << std::endl;
+
+    _do_surface.write(do_surface);
 }
 
 void Usbl::writeOutPosition(){

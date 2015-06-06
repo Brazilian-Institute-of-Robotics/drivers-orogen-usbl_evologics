@@ -19,6 +19,7 @@ task_context "Usbl" do
    property "idle_timeout", "int", 120
    property "sound_speed", "int", 1500
    property "im_retry", "int", 100
+   property "send_position_to_mobile", "bool", true
 
    property "device_string", "/std/string"
 
@@ -30,12 +31,14 @@ task_context "Usbl" do
    output_port "stats", "/usbl_evologics/DeviceStats"
    output_port "connection_status", "/usbl_evologics/ConnectionStatus"
    output_port "position_samples", "/base/samples/RigidBodyState"
+   output_port "do_surface", "bool"
 
 
     operation("storePermanently").
         doc("stores the current settings to the usbl")
 
-   periodic 1
+#   fd_driven
+   periodic 1.0 #1
 end
 
 task_context "ImProducer" do
@@ -43,10 +46,10 @@ task_context "ImProducer" do
     property "destination", "int", 2
     property "delivery_report", "bool", true
     output_port "im_output", "/usbl_evologics/SendInstantMessage"
-    periodic 2
+    periodic 8.5 #2
 end
 task_context "BurstDataProducer" do
     property "message_content", "/std/string", "Hallo Welt!"
     output_port "burstdata_output", "/std/string"
-    periodic 2
+    periodic 8.5 #2
 end

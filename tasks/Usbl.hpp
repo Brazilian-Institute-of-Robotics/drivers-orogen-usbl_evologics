@@ -29,7 +29,7 @@ namespace usbl_evologics {
         usbl_evologics::Driver driver;
         //Sended Instant Messages
         std::vector<usbl_evologics::SendInstantMessage> waiting_instant_messages;
-
+	bool do_surface;
 
 
 

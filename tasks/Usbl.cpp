@@ -83,6 +83,7 @@ void Usbl::updateHook()
     UsblBase::updateHook();
     usbl_evologics::SendInstantMessage send_im;
     if (driver.getInstantMessageDeliveryStatus() != usbl_evologics::PENDING) {
+		std::cout << "usbl orogen: deliv status is NOT pending\n";
 
 	if(driver.newPositionAvailable()){
 		std::cout << "usbl orogen: new pos avail. for sending to AUV!\n";
@@ -96,11 +97,14 @@ void Usbl::updateHook()
     //TODO write out the status of the InstantMessages
     std::string buffer;
     while (_burstdata_input.read(buffer) == RTT::NewData){
+	std::cout << "usbl orogen: there is new burstdata_input\n";
         driver.sendBurstData(reinterpret_cast<const uint8_t*>(buffer.c_str()), buffer.size());
     }
-    _stats.write(driver.getDeviceStatus());
-    _connection_status.write(driver.getConnectionStatus());
+//CG    _stats.write(driver.getDeviceStatus());
+//CG    _connection_status.write(driver.getConnectionStatus());
     while (driver.hasPacket()){
+	std::cout << "usbl orogen: driver has packet\n";
+
         uint8_t buffer[2000];
         if (size_t len = driver.read(buffer, 2000)){
             char const* buffer_as_string = reinterpret_cast<char const*>(buffer);
@@ -113,9 +117,9 @@ void Usbl::updateHook()
         std::cout << "cancel IM" << std::endl;
         writeOutPosition();
     }
-    std::cout << "write out position" << std::endl;
-    writeOutPosition();
-    std::cout << "write out position end" << std::endl;
+//    std::cout << "write out position" << std::endl;
+      writeOutPosition();
+//    std::cout << "write out position end" << std::endl;
 }
 
 void Usbl::writeOutPosition(){
@@ -129,7 +133,7 @@ void Usbl::writeOutPosition(){
     rbs.position(1) = pos.y;
     rbs.position(2) = pos.z;
     rbs.time = pos.time;
-    rbs.cov_position = pow(pos.accouracy, 2.0) * base::Matrix3d::Identity();
+    rbs.cov_position = (0.5 + 5 * pow(pos.accouracy, 2.0)) * base::Matrix3d::Identity();
     _position_samples.write(rbs);
 }
 

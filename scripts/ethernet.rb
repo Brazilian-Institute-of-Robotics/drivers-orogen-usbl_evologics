@@ -23,6 +23,7 @@ Orocos.run 'usbl_evologics::ImProducer' => 'improd',
     usbl.idle_timeout = 120
     usbl.sound_speed = 1500
     usbl.im_retry = 100
+    usbl.send_position_to_mobile = true
 
     #IM Producer Config
     improd.message_content = "Hallo Welt"

@@ -20,6 +20,7 @@ task_context "Usbl" do
    property "sound_speed", "int", 1500
    property "im_retry", "int", 100
    property "send_position_to_mobile", "bool", true
+   property "do_surface_user_input", "bool", false
 
    property "device_string", "/std/string"
 
@@ -37,8 +38,7 @@ task_context "Usbl" do
     operation("storePermanently").
         doc("stores the current settings to the usbl")
 
-#   fd_driven
-   periodic 1.0 #1
+   periodic 0.4
 end
 
 task_context "ImProducer" do
@@ -53,3 +53,4 @@ task_context "BurstDataProducer" do
     output_port "burstdata_output", "/std/string"
     periodic 8.5 #2
 end
+-

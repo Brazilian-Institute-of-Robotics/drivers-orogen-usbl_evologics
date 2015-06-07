@@ -9,11 +9,12 @@ Orocos.run 'usbl_evologics::ImProducer' => 'improd',
     improd = Orocos.name_service.get 'improd'
     burstdataprod = Orocos.name_service.get 'burstdataprod'
     #USBL Config
-    usbl.device_string = "tcp://192.168.0.253:9200" 
+#    usbl.device_string = "tcp://192.168.0.253:9200" 
+    usbl.device_string = "tcp://192.168.0.192:9200" 
     usbl.source_level = 3
     usbl.source_level_control = false
     usbl.low_gain = false
-    usbl.carrier_waveform_id = 0
+    usbl.carrier_waveform_id = 1
     usbl.local_address = 2
     usbl.remote_address = 1
     usbl.cluster_size = 10
@@ -26,19 +27,19 @@ Orocos.run 'usbl_evologics::ImProducer' => 'improd',
     usbl.send_position_to_mobile = true
 
     #IM Producer Config
-    improd.message_content = "Hallo Welt"
-    improd.destination = 2
+    improd.message_content = "toAUV"
+    improd.destination = 1
     improd.delivery_report = true
 
     #Burstdata Producer Config
-    burstdataprod.message_content = "Hallo Welt"
+    burstdataprod.message_content = "toAUV"
 
     #Connections
     improd.im_output.connect_to usbl.message_input 
     #burstdataprod.burstdata_output.connect_to usbl.burstdata_input
 
     #Starting
-    burstdataprod.start
+#    burstdataprod.start
     improd.start
 
     usbl.configure

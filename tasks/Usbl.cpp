@@ -85,7 +85,23 @@ void Usbl::updateHook()
     if (driver.getInstantMessageDeliveryStatus() != usbl_evologics::PENDING) {
 		std::cout << "usbl orogen: deliv status is NOT pending\n";
 
-	if(driver.newPositionAvailable() && _send_position_to_mobile){
+	if(_do_surface_user_input){
+	  std::cout << "do_surface_user_input == true !!!" << std::endl;
+	   send_im.destination = _remote_address.get();
+           send_im.deliveryReport = true;
+           send_im.deliveryStatus = usbl_evologics::PENDING;
+	   std::stringstream ss;
+           ss << "DO_SURFACE";
+           send_im.buffer.resize(ss.str().size());
+            for (int i=0; i < ss.str().size(); i++){
+                send_im.buffer[i] = ss.str()[i];
+            }
+
+        std::vector<uint8_t> buffer;
+
+	}
+	else if(driver.newPositionAvailable() && _send_position_to_mobile){
+
 		std::cout << "usbl orogen: new pos avail. for sending to AUV!\n";
 		driver.sendPositionToAUV();
 	}

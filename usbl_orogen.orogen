@@ -53,4 +53,3 @@ task_context "BurstDataProducer" do
     output_port "burstdata_output", "/std/string"
     periodic 8.5 #2
 end
--

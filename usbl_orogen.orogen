@@ -2,54 +2,87 @@ name "usbl_evologics"
 using_library "usbl_evologics"
 import_types_from "base"
 import_types_from "usbl_evologics/DriverTypes.hpp"
+import_types_from "usbl_evologics/IMDataTypes.hpp"
 
-task_context "Usbl" do
-   property "source_level", "int", 0
-   property "source_level_control", "bool", false
-   property "low_gain", "bool", false
-   property "carrier_waveform_id", "int", 0
-   property "local_address", "int", 1
-   property "remote_address", "int", 2
-   property "cluster_size", "int", 10
-   property "packet_time", "int", 750
-   property "retry_count", "int", 50
-   property "retry_timeout", "int", 1500
-   property "keep_online", "int", 0
-   property "position_enable", "int", 1
-   property "idle_timeout", "int", 120
-   property "sound_speed", "int", 1500
-   property "im_retry", "int", 100
-   property "send_position_to_mobile", "bool", true
-   property "do_surface_user_input", "bool", false
+task_context "UsblDock" do
+   needs_configuration 
+   
+   property "change_parameters", "bool", false
+   # Ethernet Connection   
+   property("ip_address", "/std/string")
+   property("port", "int", 9200)
+   
+   ###################################
+   ##   Input ports
+   ###################################
+   # Instant Message to be sent to AUV
+   input_port "message_input", "/usbl_evologics/SendIM"
+   # Raw data to be sent to AUV
+   input_port "rawdata_input", "/std/string"
+   # World frame pose of AUV. In case absolute measurmenet is available (GPS & magnetometer)
+   input_port "world_pose", "base/samples/RigidBodyState"
 
-   property "device_string", "/std/string"
-
-   input_port "message_input", "/usbl_evologics/SendInstantMessage"
-   input_port "burstdata_input", "/std/string"
-
-   output_port "message_output", "/usbl_evologics/ReceiveInstantMessage"
-   output_port "burstdata_output", "/std/string"
-   output_port "stats", "/usbl_evologics/DeviceStats"
-   output_port "connection_status", "/usbl_evologics/ConnectionStatus"
+   ###################################
+   ##   Output ports
+   ###################################   
+   # Instant Message receveid from AUV
+   output_port "message_output", "/usbl_evologics/ReceiveIM"
+   # Raw data receveid from AUV  
+   output_port "rawdata_output", "/std/string"
+   # AUV's pose in USBL frame.
    output_port "position_samples", "/base/samples/RigidBodyState"
-   output_port "do_surface", "bool"
+   
+   output_port "connection", "/usbl_evologics/Connection"
+   output_port "device_settings", "/usbl_evologics/DeviceSettings"
+   output_port "data_channel", "/usbl_evologics/DataChannel"
+
+   
 
 
-    operation("storePermanently").
-        doc("stores the current settings to the usbl")
+  #  operation("storePermanently").
+  #      doc("stores the current settings to the usbl")
 
    periodic 0.4
 end
 
-task_context "ImProducer" do
-    property "message_content", "/std/string", "Hallo Welt!"
-    property "destination", "int", 2
-    property "delivery_report", "bool", true
-    output_port "im_output", "/usbl_evologics/SendInstantMessage"
-    periodic 8.5 #2
+task_context "UsblAUV" do
+   needs_configuration
+   
+   property "change_parameters", "bool", false
+   # Serial Connection
+   property("interface_name", "/std/string")
+   property("baudrate", "int", 19200)
+   
+   ###################################
+   ##   Input ports
+   ###################################
+   # Instant Message to be sent to Dock
+   input_port "message_input", "/usbl_evologics/SendIM"
+   # Raw data to be sent to Dock
+   input_port "burstdata_input", "/std/string"
+
+   ###################################
+   ##   Output ports
+   ###################################   
+   # Instant Message receveid from Dock.
+   output_port "message_output", "/usbl_evologics/ReceiveIM"
+   # Raw data receveid from Dock.  
+   output_port "burstdata_output", "/std/string"
+   # AUV's pose.
+   output_port "position_samples", "/base/samples/RigidBodyState"
+   # Command from Dock to AUV
+   output_port "auv_command", "/usbl_evologics/CommandAUV"  
+   
+   output_port "connection", "/usbl_evologics/Connection"
+   output_port "device_settings", "/usbl_evologics/DeviceSettings"
+   output_port "data_channel", "/usbl_evologics/DataChannel"
+
+   
+
+
+    #operation("storePermanently").
+    #    doc("stores the current settings to the usbl")
+
+   periodic 0.4
 end
-task_context "BurstDataProducer" do
-    property "message_content", "/std/string", "Hallo Welt!"
-    output_port "burstdata_output", "/std/string"
-    periodic 8.5 #2
-end
+

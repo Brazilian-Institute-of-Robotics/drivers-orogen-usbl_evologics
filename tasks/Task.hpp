@@ -1,14 +1,15 @@
 /* Generated from orogen/lib/orogen/templates/tasks/Task.hpp */
 
-#ifndef USBL_EVOLOGICS_USBLDOCK_TASK_HPP
-#define USBL_EVOLOGICS_USBLDOCK_TASK_HPP
+#ifndef USBL_EVOLOGICS_TASK_TASK_HPP
+#define USBL_EVOLOGICS_TASK_TASK_HPP
 
-#include "Task.hpp"
-#include "usbl_evologics/UsblDockBase.hpp"
+#include "usbl_evologics/Driver.hpp"
+#include "base/samples/RigidBodyState.hpp"
+#include "usbl_evologics/TaskBase.hpp"
 
 namespace usbl_evologics {
 
-    /*! \class UsblDock 
+    /*! \class Task 
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
      * Essential interfaces are operations, data flow ports and properties. These interfaces have been defined using the oroGen specification.
      * In order to modify the interfaces you should (re)use oroGen and rely on the associated workflow.
@@ -17,34 +18,37 @@ namespace usbl_evologics {
      * The name of a TaskContext is primarily defined via:
      \verbatim
      deployment 'deployment_name'
-         task('custom_task_name','usbl_evologics::UsblDock')
+         task('custom_task_name','usbl_evologics::Task')
      end
      \endverbatim
      *  It can be dynamically adapted when the deployment is called with a prefix argument. 
      */
-    class UsblDock : public UsblDockBase
+    class Task : public TaskBase
     {
-	friend class UsblDockBase;
+	friend class TaskBase;
     protected:
 
+	    boost::shared_ptr<Driver>  driver;
+
+	    SendIM send_IM;
 
     public:
-        /** TaskContext constructor for UsblDock
+        /** TaskContext constructor for Task
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
          * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
          */
-        UsblDock(std::string const& name = "usbl_evologics::UsblDock");
+        Task(std::string const& name = "usbl_evologics::Task");
 
-        /** TaskContext constructor for UsblDock 
+        /** TaskContext constructor for Task 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
          * \param engine The RTT Execution engine to be used for this task, which serialises the execution of all commands, programs, state machines and incoming events for a task. 
          * 
          */
-        UsblDock(std::string const& name, RTT::ExecutionEngine* engine);
+        Task(std::string const& name, RTT::ExecutionEngine* engine);
 
-        /** Default deconstructor of UsblDock
+        /** Default deconstructor of Task
          */
-	~UsblDock();
+	~Task();
 
         /** This hook is called by Orocos when the state machine transitions
          * from PreOperational to Stopped. If it returns false, then the
@@ -104,8 +108,24 @@ namespace usbl_evologics {
          */
         void cleanupHook();
 
-        virtual void processParticularNotification(NotificationInfo const &notification);
+        /** Process I/O data
+         *
+         */
+        void processIO();
 
+        /** Process notification
+         *
+         * Interpret Notification. .
+         *
+         */
+        void processNotification(NotificationInfo const &notification);
+
+        /** Particular process notification
+         *
+         * To be implemented in subclass if particular notification is needed, like pose information (USBLLONG or USBLANGLES).
+         *
+         */
+        virtual void processParticularNotification(NotificationInfo const &notification);
     };
 }
 

@@ -28,6 +28,20 @@ bool UsblDock::configureHook()
 {
     if (! UsblDockBase::configureHook())
         return false;
+
+    if (!_io_port.get().empty())
+    {
+        if(_io_port.get().find("tcp") != std::string::npos)
+            driver->setInterface(ETHERNET);
+        else
+        {
+            std::cout << "WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
+            RTT::log(RTT::Error) << "WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
+            exception(WRONG_INTERFACE);
+            return false;
+        }
+    }
+
     return true;
 }
 bool UsblDock::startHook()
@@ -52,3 +66,18 @@ void UsblDock::cleanupHook()
 {
     UsblDockBase::cleanupHook();
 }
+void UsblDock::processParticularNotification(NotificationInfo const &notification)
+{
+    if(notification.notification == USBLLONG)
+    {
+        _position_samples.write(driver->getPose(driver->getPose(notification.buffer)));
+        return ;
+    }
+    else
+    {
+        std::cout << "Notification NOT implemented: \"" << notification.buffer << "\"." << std::endl;
+        RTT::log(RTT::Error) << "Notification NOT implemented: \"" << notification.buffer << "\"." << std::endl;
+        return ;
+    }
+}
+

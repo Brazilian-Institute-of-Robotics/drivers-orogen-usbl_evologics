@@ -4,82 +4,61 @@ import_types_from "base"
 import_types_from "usbl_evologics/DriverTypes.hpp"
 using_task_library "iodrivers_base"
 
-task_context "UsblDock" do
+task_context "Task" do
    subclasses "iodrivers_base::Task"
    needs_configuration 
    
+   # TODO Include more parameters 
    property "change_parameters", "bool", false
-   # Ethernet Connection   
-   property("ip_address", "/std/string")
-   property("port", "int", 9200)
    
    ###################################
    ##   Input ports
    ###################################
-   # Instant Message to be sent to AUV
+   
+   # Instant Message to be sent remote device
    input_port "message_input", "/usbl_evologics/SendIM"
-   # Raw data to be sent to AUV
+   # Raw data to be sent to remote device
    input_port "rawdata_input", "/std/string"
 
    ###################################
    ##   Output ports
    ###################################   
-   # Instant Message receveid from AUV
-   output_port "message_output", "/usbl_evologics/ReceiveIM"
-   # Raw data receveid from AUV  
-   output_port "rawdata_output", "/std/string"
-   # AUV's pose in USBL frame.
-   output_port "position_samples", "/base/samples/RigidBodyState"
    
+   # Instant Message receveid from remote device
+   output_port "message_output", "/usbl_evologics/ReceiveIM"
+   # Raw data receveid from remote device  
+   output_port "rawdata_output", "/std/string" 
+   
+   # TODO need better definition of what need to be outputted   
    output_port "connection", "/usbl_evologics/Connection"
    output_port "device_settings", "/usbl_evologics/DeviceSettings"
    output_port "data_channel", "/usbl_evologics/DataChannel"
 
-   
-
-
-  #  operation("storePermanently").
-  #      doc("stores the current settings to the usbl")
-
+   exception_states :WRONG_INTERFACE
+    
    periodic 0.4
 end
 
-task_context "UsblAUV" do
-   subclasses "iodrivers_base::Task"
-   needs_configuration
+task_context "UsblDock" do
+   subclasses "Task"
+   needs_configuration 
    
-   property "change_parameters", "bool", false
-   # Serial Connection
-   property("interface_name", "/std/string")
-   property("baudrate", "int", 19200)
-   
-   ###################################
-   ##   Input ports
-   ###################################
-   # Instant Message to be sent to Dock
-   input_port "message_input", "/usbl_evologics/SendIM"
-   # Raw data to be sent to Dock
-   input_port "rawdata_input", "/std/string"
+   # Ethernet Connection   
 
    ###################################
    ##   Output ports
    ###################################   
-   # Instant Message receveid from Dock.
-   output_port "message_output", "/usbl_evologics/ReceiveIM"
-   # Raw data receveid from Dock.  
-   output_port "rawdata_output", "/std/string"
- 
    
-   output_port "connection", "/usbl_evologics/Connection"
-   output_port "device_settings", "/usbl_evologics/DeviceSettings"
-   output_port "data_channel", "/usbl_evologics/DataChannel"
+   # AUV's pose in USBL frame. Present with Ethernet Connection
+   output_port "position_samples", "/base/samples/RigidBodyState"
 
+end
+
+task_context "UsblAUV" do
+   subclasses "Task"
+   needs_configuration
    
-
-
-    #operation("storePermanently").
-    #    doc("stores the current settings to the usbl")
-
-   periodic 0.4
+   # Serial Connection  
+   
 end
 

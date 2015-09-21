@@ -3,6 +3,7 @@
 #ifndef USBL_EVOLOGICS_USBLAUV_TASK_HPP
 #define USBL_EVOLOGICS_USBLAUV_TASK_HPP
 
+#include "Task.hpp"
 #include "usbl_evologics/UsblAUVBase.hpp"
 
 namespace usbl_evologics {
@@ -103,6 +104,7 @@ namespace usbl_evologics {
          * before calling start() again.
          */
         void cleanupHook();
+
     };
 }
 

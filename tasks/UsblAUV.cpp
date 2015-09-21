@@ -28,6 +28,20 @@ bool UsblAUV::configureHook()
 {
     if (! UsblAUVBase::configureHook())
         return false;
+
+    if (!_io_port.get().empty())
+    {
+        if(_io_port.get().find("serial") != std::string::npos)
+            driver->setInterface(SERIAL);
+        else
+        {
+            std::cout << "WRONG INTERFACE, define serial connection in _io_port" << std::endl;
+            RTT::log(RTT::Error) << "WRONG INTERFACE, define serial connection in _io_port" << std::endl;
+            exception(WRONG_INTERFACE);
+            return false;
+        }
+    }
+
     return true;
 }
 bool UsblAUV::startHook()
@@ -52,3 +66,4 @@ void UsblAUV::cleanupHook()
 {
     UsblAUVBase::cleanupHook();
 }
+

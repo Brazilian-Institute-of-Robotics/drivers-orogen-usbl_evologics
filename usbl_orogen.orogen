@@ -2,9 +2,10 @@ name "usbl_evologics"
 using_library "usbl_evologics"
 import_types_from "base"
 import_types_from "usbl_evologics/DriverTypes.hpp"
-import_types_from "usbl_evologics/IMDataTypes.hpp"
+using_task_library "iodrivers_base"
 
 task_context "UsblDock" do
+   subclasses "iodrivers_base::Task"
    needs_configuration 
    
    property "change_parameters", "bool", false
@@ -19,8 +20,6 @@ task_context "UsblDock" do
    input_port "message_input", "/usbl_evologics/SendIM"
    # Raw data to be sent to AUV
    input_port "rawdata_input", "/std/string"
-   # World frame pose of AUV. In case absolute measurmenet is available (GPS & magnetometer)
-   input_port "world_pose", "base/samples/RigidBodyState"
 
    ###################################
    ##   Output ports
@@ -46,6 +45,7 @@ task_context "UsblDock" do
 end
 
 task_context "UsblAUV" do
+   subclasses "iodrivers_base::Task"
    needs_configuration
    
    property "change_parameters", "bool", false
@@ -59,7 +59,7 @@ task_context "UsblAUV" do
    # Instant Message to be sent to Dock
    input_port "message_input", "/usbl_evologics/SendIM"
    # Raw data to be sent to Dock
-   input_port "burstdata_input", "/std/string"
+   input_port "rawdata_input", "/std/string"
 
    ###################################
    ##   Output ports
@@ -67,11 +67,8 @@ task_context "UsblAUV" do
    # Instant Message receveid from Dock.
    output_port "message_output", "/usbl_evologics/ReceiveIM"
    # Raw data receveid from Dock.  
-   output_port "burstdata_output", "/std/string"
-   # AUV's pose.
-   output_port "position_samples", "/base/samples/RigidBodyState"
-   # Command from Dock to AUV
-   output_port "auv_command", "/usbl_evologics/CommandAUV"  
+   output_port "rawdata_output", "/std/string"
+ 
    
    output_port "connection", "/usbl_evologics/Connection"
    output_port "device_settings", "/usbl_evologics/DeviceSettings"

@@ -4,7 +4,6 @@
 #define USBL_EVOLOGICS_USBLAUV_TASK_HPP
 
 #include "usbl_evologics/UsblAUVBase.hpp"
-#include "usbl_evologics/Driver.hpp"
 
 namespace usbl_evologics {
 
@@ -27,7 +26,7 @@ namespace usbl_evologics {
 	friend class UsblAUVBase;
     protected:
 
-	    Driver *usbl;
+
 
     public:
         /** TaskContext constructor for UsblAUV
@@ -39,7 +38,7 @@ namespace usbl_evologics {
         /** TaskContext constructor for UsblAUV 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
          * \param engine The RTT Execution engine to be used for this task, which serialises the execution of all commands, programs, state machines and incoming events for a task. 
-         * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
+         * 
          */
         UsblAUV(std::string const& name, RTT::ExecutionEngine* engine);
 

@@ -4,8 +4,6 @@
 #define USBL_EVOLOGICS_USBLDOCK_TASK_HPP
 
 #include "usbl_evologics/UsblDockBase.hpp"
-#include "usbl_evologics/Driver.hpp"
-#include "base/samples/RigidBodyState.hpp"
 
 namespace usbl_evologics {
 
@@ -28,12 +26,7 @@ namespace usbl_evologics {
 	friend class UsblDockBase;
     protected:
 
-	    Driver *usbl;
 
-	    base::samples::RigidBodyState auv_pose;
-	    // mail_command manages the flow of command between driver and device.
-	    // Driver only send a new command to device after receive a answer for previous command.
-	    bool mail_command;
 
     public:
         /** TaskContext constructor for UsblDock
@@ -45,7 +38,7 @@ namespace usbl_evologics {
         /** TaskContext constructor for UsblDock 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
          * \param engine The RTT Execution engine to be used for this task, which serialises the execution of all commands, programs, state machines and incoming events for a task. 
-         * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
+         * 
          */
         UsblDock(std::string const& name, RTT::ExecutionEngine* engine);
 

@@ -94,9 +94,9 @@ void Task::processIO()
             driver->resetDevice(DEVICE);
 
     }
-    catch (std::exception &error){
-        std::cout << "Exception Error: "<< error.what() << std::endl;
-        RTT::log(RTT::Error) << "Exception Error: "<< error.what() << std::endl;
+    catch (std::runtime_error &error){
+        std::cout << "Error: "<< error.what() << std::endl;
+        RTT::log(RTT::Error) << "Error: "<< error.what() << std::endl;
 
     }
 }

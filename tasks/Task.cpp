@@ -68,37 +68,28 @@ void Task::cleanupHook()
 void Task::processIO()
 {
 
+    Connection connection = driver->getConnectionStatus();
+    _connection.write(connection);
 
-    try{
-        Connection connection = driver->getConnectionStatus();
-        _connection.write(connection);
+    // TODO define exactly what to do for each connection status
+    if(connection.status == ONLINE || connection.status == OFFLINE_READY || connection.status == INITIATION_LISTEN )
+    {
+        if(_message_input.read(send_IM) == RTT::NewData)
+            driver->sendInstantMessage(send_IM);
 
-        // TODO define exactly what to do for each connection status
-        if(connection.status == ONLINE || connection.status == OFFLINE_READY || connection.status == INITIATION_LISTEN )
-        {
-            if(_message_input.read(send_IM) == RTT::NewData)
-                driver->sendInstantMessage(send_IM);
-
-            std::string raw_data_input;
-            if(driver->getMode() == DATA && _rawdata_input.read(raw_data_input) == RTT::NewData)
-                driver->sendRawData(raw_data_input);
-        }
-
-        while(driver->hasNotification())
-            processNotification(driver->getNotification());
-        while(driver->hasRawData())
-            _rawdata_output.write(driver->getRawData());
-
-
-        if(connection.status == OFFLINE_ALARM)
-            driver->resetDevice(DEVICE);
-
+        std::string raw_data_input;
+        if(driver->getMode() == DATA && _rawdata_input.read(raw_data_input) == RTT::NewData)
+            driver->sendRawData(raw_data_input);
     }
-    catch (std::runtime_error &error){
-        std::cout << "Error: "<< error.what() << std::endl;
-        RTT::log(RTT::Error) << "Error: "<< error.what() << std::endl;
 
-    }
+    while(driver->hasNotification())
+        processNotification(driver->getNotification());
+    while(driver->hasRawData())
+        _rawdata_output.write(driver->getRawData());
+
+    if(connection.status == OFFLINE_ALARM)
+        driver->resetDevice(DEVICE);
+
 }
 
 void Task::processNotification(NotificationInfo const &notification)

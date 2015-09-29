@@ -9,7 +9,12 @@ task_context "Task" do
    needs_configuration 
    
    # TODO Include more parameters 
+   # Set if device's parameters should be updated.
+   # FALSE, device uses its stored settings profile.
+   # TRUE, device uses parameters set in "device_settings".
    property "change_parameters", "bool", false
+   # Device settings.
+   attribute "device_settings", "/usbl_evologics/DeviceSettings"
    
    ###################################
    ##   Input ports
@@ -18,7 +23,7 @@ task_context "Task" do
    # Instant Message to be sent remote device
    input_port "message_input", "/usbl_evologics/SendIM"
    # Raw data to be sent to remote device
-   input_port "rawdata_input", "/std/string"
+   input_port "raw_data_input", "/iodrivers_base/RawPacket"
 
    ###################################
    ##   Output ports
@@ -27,16 +32,16 @@ task_context "Task" do
    # Instant Message receveid from remote device
    output_port "message_output", "/usbl_evologics/ReceiveIM"
    # Raw data receveid from remote device  
-   output_port "rawdata_output", "/std/string" 
+   output_port "raw_data_output", "/iodrivers_base/RawPacket" 
    
-   # TODO need better definition of what need to be outputted   
-   output_port "connection", "/usbl_evologics/Connection"
-   output_port "device_settings", "/usbl_evologics/DeviceSettings"
-   output_port "data_channel", "/usbl_evologics/DataChannel"
+   # TODO need better definition of what need to be outputted  
+   # Status of acoustic connection and available free buffer per channel
+   output_port "acoustic_connection", "/usbl_evologics/AcousticConnection"
+   # Acoustic channel performance.
+   output_port "acoustic_channel", "/usbl_evologics/AcousticChannel"
 
    exception_states :WRONG_INTERFACE
-    
-   periodic 0.4
+
 end
 
 task_context "UsblDock" do

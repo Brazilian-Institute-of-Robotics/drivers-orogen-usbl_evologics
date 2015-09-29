@@ -113,9 +113,23 @@ namespace usbl_evologics {
          */
         void processIO();
 
+        /** Get communication parameters
+         *
+         *  @return AcousticChannel with performance.
+         */
+        AcousticChannel getAcousticChannelparameters(void);
+
+        /** Update parameters on device.
+         *
+         * Compare actual with desired settings before update.
+         * @param desired_setting, parameters that should be applied on device.
+         * @param actual_setting, parameters present in device that will be used for compare.
+         */
+        void updateDeviceParameters(DeviceSettings const &desired_setting, DeviceSettings const &actual_setting);
+
         /** Process notification
          *
-         * Interpret Notification. .
+         * Interpret Notification.
          *
          */
         void processNotification(NotificationInfo const &notification);

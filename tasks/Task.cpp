@@ -1,17 +1,20 @@
 /* Generated from orogen/lib/orogen/templates/tasks/Task.cpp */
 
 #include "Task.hpp"
+#include <rtt/extras/FileDescriptorActivity.hpp>
 
 using namespace usbl_evologics;
 
 Task::Task(std::string const& name)
     : TaskBase(name)
 {
+    _status_period.set(base::Time::fromSeconds(1));
 }
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     : TaskBase(name, engine)
 {
+    _status_period.set(base::Time::fromSeconds(1));
 }
 
 Task::~Task()
@@ -35,6 +38,8 @@ bool Task::configureHook()
     if (! TaskBase::configureHook())
         return false;
 
+    IM_notification_ack = true;
+
     DeviceSettings settings = _device_settings.get();
     DeviceSettings current_settings = driver->getCurrentSetting();
     if(_change_parameters.get())
@@ -55,11 +60,21 @@ bool Task::startHook()
 {
     if (! TaskBase::startHook())
         return false;
+
+    mLastStatus = base::Time::now();
     return true;
 }
 void Task::updateHook()
 {
     TaskBase::updateHook();
+
+   if((base::Time::now() - mLastStatus) > _status_period.get())
+   {
+       mLastStatus = base::Time::now();
+       _acoustic_channel.write(getAcousticChannelparameters());
+   }
+
+
 }
 void Task::errorHook()
 {
@@ -75,23 +90,31 @@ void Task::cleanupHook()
 }
 void Task::processIO()
 {
-
-    _device_settings.set(driver->getCurrentSetting());
-
-    _acoustic_channel.write(getAcousticChannelparameters());
-
     AcousticConnection acoustic_connection = driver->getConnectionStatus();
     _acoustic_connection.write(acoustic_connection);
 
     // TODO define exactly what to do for each acoustic_connection status
-    if(acoustic_connection.status == ONLINE || acoustic_connection.status == OFFLINE_READY || acoustic_connection.status == INITIATION_LISTEN )
+    if(acoustic_connection.status == ONLINE || acoustic_connection.status == INITIATION_ESTABLISH || acoustic_connection.status == INITIATION_LISTEN )
     {
-        if(_message_input.read(send_IM) == RTT::NewData)
+        // Need a flow management of data be sent to device.
+        // Only send a new Instant Message if a acknowledgment notification of previously message was received if it was required.
+        while(IM_notification_ack && _message_input.read(send_IM) == RTT::NewData)
+        {
+            // Check free transmission buffer and instant message size.
+            checkFreeBuffer(driver->getStringOfIM(send_IM), acoustic_connection);
+            if(send_IM.buffer.size() > MAX_MSG_SIZE)
+                RTT::log(RTT::Error) << "Instant Message \""<< send_IM.buffer << "\" is longer than MAX_MSG_SIZE of \"" << MAX_MSG_SIZE << "\" bytes. It maybe not be sent to remote device " << std::endl;
+
             driver->sendInstantMessage(send_IM);
+            if(send_IM.deliveryReport)
+                IM_notification_ack = false;
+        }
 
         iodrivers_base::RawPacket raw_data_input;
-        if(_raw_data_input.read(raw_data_input) == RTT::NewData)
+        while(_raw_data_input.read(raw_data_input) == RTT::NewData)
         {
+            std::string buffer(raw_data_input.data.begin(), raw_data_input.data.end());
+            checkFreeBuffer(buffer, acoustic_connection);
             if(driver->getMode() == DATA)
                 driver->sendRawData(raw_data_input.data);
             else
@@ -110,10 +133,11 @@ void Task::processIO()
         _raw_data_output.write(raw_packet_buffer);
     }
 
+    // An internal error has occurred on device. Manual says to reset the device.
     if(acoustic_connection.status == OFFLINE_ALARM)
         driver->resetDevice(DEVICE);
-
 }
+
 
 void Task::updateDeviceParameters(DeviceSettings const &desired_setting, DeviceSettings const &actual_setting)
 {
@@ -174,22 +198,12 @@ void Task::updateDeviceParameters(DeviceSettings const &desired_setting, DeviceS
         if(desired_setting.poolSize.at(0) != actual_setting.poolSize.at(0))
             driver->setPoolSize(desired_setting.poolSize.at(0));
     }
-
-    if(!actual_setting.dropCount.empty() && !desired_setting.dropCount.empty())
-    {
-        // Only takes in account the first and actual channel
-        // If desired value is 0, reset counter.
-        if(desired_setting.dropCount.at(0) == 0)
-            driver->resetDropCounter();
-    }
-
-    if(!actual_setting.overflowCounter.empty() && !desired_setting.overflowCounter.empty())
-    {
-        // Only takes in account the first and actual channel]
-        // If desired value is 0, reset counter.
-        if(desired_setting.overflowCounter.at(0) == 0)
-            driver->resetOverflowCounter();
-    }
+    // Only takes in account the first and actual channel
+    if(actual_setting.resetDropCount)
+        driver->resetDropCounter();
+    // Only takes in account the first and actual channel
+    if(actual_setting.resetOverflowCounter)
+        driver->resetOverflowCounter();
 }
 
 AcousticChannel Task::getAcousticChannelparameters(void)
@@ -203,7 +217,19 @@ AcousticChannel Task::getAcousticChannelparameters(void)
     channel.relativeVelocity = driver->getRelativeVelocity();
     channel.signalIntegrity = driver->getSignalIntegrity();
     channel.multiPath = driver->getMultipath();
+    channel.channelNumber = driver->getChannelNumber();
+    channel.dropCount = driver->getDropCounter();
+    channel.overflowCounter = driver->getOverflowCounter();
+
     return channel;
+}
+
+void Task::checkFreeBuffer(std::string const &buffer, AcousticConnection const &acoustic_connection)
+{
+    // Only check the first and actual channel.
+    if(buffer.size() > acoustic_connection.freeBuffer.at(0))
+        // By now, only a message is logged. Let the data be dropped so it will be shown in the output port.
+        RTT::log(RTT::Error) << "Buffer \"" << buffer << "\" is bigger than free transmission buffer. Split your buffer or reduce the rate of transmission." << std::endl;
 }
 
 void Task::processNotification(NotificationInfo const &notification)
@@ -220,6 +246,8 @@ void Task::processNotification(NotificationInfo const &notification)
             std::cout << "Device did not receive a delivered acknowledgment for Instant Message: \"" << send_IM.buffer << "\"" << std::endl;
             RTT::log(RTT::Error) << "Device did not receive a delivered acknowledgment for Instant Message: \"" << send_IM.buffer << "\"" << std::endl;
         }
+        if(!IM_notification_ack)
+            IM_notification_ack = true;
         return ;
     }
     else if(notification.notification == CANCELED_IM)

@@ -15,6 +15,11 @@ task_context "Task" do
    property "change_parameters", "bool", false
    # Device settings.
    attribute "device_settings", "/usbl_evologics/DeviceSettings"
+   # Period for status update. Defaults to one second
+   property "status_period", "base/Time"
+   
+     
+   
    
    ###################################
    ##   Input ports

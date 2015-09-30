@@ -31,6 +31,13 @@ namespace usbl_evologics {
 	    boost::shared_ptr<Driver>  driver;
 
 	    SendIM send_IM;
+	    // Variable that control the sending of new instant message.
+	    bool IM_notification_ack;
+
+	    base::Time mLastStatus;
+
+	    const int MAX_MSG_SIZE = 64;
+
 
     public:
         /** TaskContext constructor for Task
@@ -126,6 +133,14 @@ namespace usbl_evologics {
          * @param actual_setting, parameters present in device that will be used for compare.
          */
         void updateDeviceParameters(DeviceSettings const &desired_setting, DeviceSettings const &actual_setting);
+
+        /** Verify if free transmission buffer is big enough to support message.
+         *
+         * @param buffer to be transmitted to remote device.
+         * @param acoustic_connection contains amount of free buffer.
+         */
+        void checkFreeBuffer(std::string const &buffer, AcousticConnection const &acoustic_connection);
+//        void checkFreeBuffer(std::vector<uint8_t> const &buffer, AcousticConnection const &acoustic_connection);
 
         /** Process notification
          *

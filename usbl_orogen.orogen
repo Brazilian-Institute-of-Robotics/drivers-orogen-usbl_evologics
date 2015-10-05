@@ -2,54 +2,73 @@ name "usbl_evologics"
 using_library "usbl_evologics"
 import_types_from "base"
 import_types_from "usbl_evologics/DriverTypes.hpp"
+using_task_library "iodrivers_base"
 
-task_context "Usbl" do
-   property "source_level", "int", 0
-   property "source_level_control", "bool", false
-   property "low_gain", "bool", false
-   property "carrier_waveform_id", "int", 0
-   property "local_address", "int", 1
-   property "remote_address", "int", 2
-   property "cluster_size", "int", 10
-   property "packet_time", "int", 750
-   property "retry_count", "int", 50
-   property "retry_timeout", "int", 1500
-   property "keep_online", "int", 0
-   property "position_enable", "int", 1
-   property "idle_timeout", "int", 120
-   property "sound_speed", "int", 1500
-   property "im_retry", "int", 100
-   property "send_position_to_mobile", "bool", true
-   property "do_surface_user_input", "bool", false
+task_context "Task" do
+   subclasses "iodrivers_base::Task"
+   needs_configuration 
+   
+   # TODO Include more parameters 
+   # Set if device's parameters should be updated.
+   # FALSE, device uses its stored settings profile.
+   # TRUE, device uses parameters set in "device_settings".
+   property "change_parameters", "bool", false
+   # Device settings.
+   attribute "device_settings", "/usbl_evologics/DeviceSettings"
+   # Period for status update. Defaults to one second
+   property "status_period", "base/Time"
+   
+     
+   
+   
+   ###################################
+   ##   Input ports
+   ###################################
+   
+   # Instant Message to be sent remote device
+   input_port "message_input", "/usbl_evologics/SendIM"
+   # Raw data to be sent to remote device
+   input_port "raw_data_input", "/iodrivers_base/RawPacket"
 
-   property "device_string", "/std/string"
+   ###################################
+   ##   Output ports
+   ###################################   
+   
+   # Instant Message receveid from remote device
+   output_port "message_output", "/usbl_evologics/ReceiveIM"
+   # Raw data receveid from remote device  
+   output_port "raw_data_output", "/iodrivers_base/RawPacket" 
+   
+   # TODO need better definition of what need to be outputted  
+   # Status of acoustic connection and available free buffer per channel
+   output_port "acoustic_connection", "/usbl_evologics/AcousticConnection"
+   # Acoustic channel performance.
+   output_port "acoustic_channel", "/usbl_evologics/AcousticChannel"
 
-   input_port "message_input", "/usbl_evologics/SendInstantMessage"
-   input_port "burstdata_input", "/std/string"
+   exception_states :WRONG_INTERFACE
 
-   output_port "message_output", "/usbl_evologics/ReceiveInstantMessage"
-   output_port "burstdata_output", "/std/string"
-   output_port "stats", "/usbl_evologics/DeviceStats"
-   output_port "connection_status", "/usbl_evologics/ConnectionStatus"
+end
+
+task_context "UsblDock" do
+   subclasses "Task"
+   needs_configuration 
+   
+   # Ethernet Connection   
+
+   ###################################
+   ##   Output ports
+   ###################################   
+   
+   # AUV's pose in USBL frame. Present with Ethernet Connection
    output_port "position_samples", "/base/samples/RigidBodyState"
-   output_port "do_surface", "bool"
 
-
-    operation("storePermanently").
-        doc("stores the current settings to the usbl")
-
-   periodic 0.4
 end
 
-task_context "ImProducer" do
-    property "message_content", "/std/string", "Hallo Welt!"
-    property "destination", "int", 2
-    property "delivery_report", "bool", true
-    output_port "im_output", "/usbl_evologics/SendInstantMessage"
-    periodic 8.5 #2
+task_context "UsblAUV" do
+   subclasses "Task"
+   needs_configuration
+   
+   # Serial Connection  
+   
 end
-task_context "BurstDataProducer" do
-    property "message_content", "/std/string", "Hallo Welt!"
-    output_port "burstdata_output", "/std/string"
-    periodic 8.5 #2
-end
+

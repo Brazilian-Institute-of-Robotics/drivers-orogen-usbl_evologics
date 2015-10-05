@@ -1,13 +1,15 @@
 /* Generated from orogen/lib/orogen/templates/tasks/Task.hpp */
 
-#ifndef USBL_OROGEN_IMPRODUCER_TASK_HPP
-#define USBL_OROGEN_IMPRODUCER_TASK_HPP
+#ifndef USBL_EVOLOGICS_TASK_TASK_HPP
+#define USBL_EVOLOGICS_TASK_TASK_HPP
 
-#include "usbl_evologics/ImProducerBase.hpp"
+#include "usbl_evologics/Driver.hpp"
+#include "base/samples/RigidBodyState.hpp"
+#include "usbl_evologics/TaskBase.hpp"
 
 namespace usbl_evologics {
 
-    /*! \class ImProducer 
+    /*! \class Task 
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
      * Essential interfaces are operations, data flow ports and properties. These interfaces have been defined using the oroGen specification.
      * In order to modify the interfaces you should (re)use oroGen and rely on the associated workflow.
@@ -16,35 +18,44 @@ namespace usbl_evologics {
      * The name of a TaskContext is primarily defined via:
      \verbatim
      deployment 'deployment_name'
-         task('custom_task_name','usbl_evologics::ImProducer')
+         task('custom_task_name','usbl_evologics::Task')
      end
      \endverbatim
      *  It can be dynamically adapted when the deployment is called with a prefix argument. 
      */
-    class ImProducer : public ImProducerBase
+    class Task : public TaskBase
     {
-	friend class ImProducerBase;
+	friend class TaskBase;
     protected:
 
+	    boost::shared_ptr<Driver>  driver;
+
+	    SendIM send_IM;
+	    // Variable that control the sending of new instant message.
+	    bool IM_notification_ack;
+
+	    base::Time mLastStatus;
+
+	    const int MAX_MSG_SIZE = 64;
 
 
     public:
-        /** TaskContext constructor for ImProducer
+        /** TaskContext constructor for Task
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
          * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
          */
-        ImProducer(std::string const& name = "usbl_evologics::ImProducer", TaskCore::TaskState initial_state = Stopped);
+        Task(std::string const& name = "usbl_evologics::Task");
 
-        /** TaskContext constructor for ImProducer 
+        /** TaskContext constructor for Task 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
          * \param engine The RTT Execution engine to be used for this task, which serialises the execution of all commands, programs, state machines and incoming events for a task. 
-         * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
+         * 
          */
-        ImProducer(std::string const& name, RTT::ExecutionEngine* engine, TaskCore::TaskState initial_state = Stopped);
+        Task(std::string const& name, RTT::ExecutionEngine* engine);
 
-        /** Default deconstructor of ImProducer
+        /** Default deconstructor of Task
          */
-	~ImProducer();
+	~Task();
 
         /** This hook is called by Orocos when the state machine transitions
          * from PreOperational to Stopped. If it returns false, then the
@@ -103,6 +114,47 @@ namespace usbl_evologics {
          * before calling start() again.
          */
         void cleanupHook();
+
+        /** Process I/O data
+         *
+         */
+        void processIO();
+
+        /** Get communication parameters
+         *
+         *  @return AcousticChannel with performance.
+         */
+        AcousticChannel getAcousticChannelparameters(void);
+
+        /** Update parameters on device.
+         *
+         * Compare actual with desired settings before update.
+         * @param desired_setting, parameters that should be applied on device.
+         * @param actual_setting, parameters present in device that will be used for compare.
+         */
+        void updateDeviceParameters(DeviceSettings const &desired_setting, DeviceSettings const &actual_setting);
+
+        /** Verify if free transmission buffer is big enough to support message.
+         *
+         * @param buffer to be transmitted to remote device.
+         * @param acoustic_connection contains amount of free buffer.
+         */
+        void checkFreeBuffer(std::string const &buffer, AcousticConnection const &acoustic_connection);
+//        void checkFreeBuffer(std::vector<uint8_t> const &buffer, AcousticConnection const &acoustic_connection);
+
+        /** Process notification
+         *
+         * Interpret Notification.
+         *
+         */
+        void processNotification(NotificationInfo const &notification);
+
+        /** Particular process notification
+         *
+         * To be implemented in subclass if particular notification is needed, like pose information (USBLLONG or USBLANGLES).
+         *
+         */
+        virtual void processParticularNotification(NotificationInfo const &notification);
     };
 }
 

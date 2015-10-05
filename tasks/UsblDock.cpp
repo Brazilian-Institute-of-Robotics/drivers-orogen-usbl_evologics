@@ -1,0 +1,83 @@
+/* Generated from orogen/lib/orogen/templates/tasks/Task.cpp */
+
+#include "UsblDock.hpp"
+
+using namespace usbl_evologics;
+
+UsblDock::UsblDock(std::string const& name)
+    : UsblDockBase(name)
+{
+}
+
+UsblDock::UsblDock(std::string const& name, RTT::ExecutionEngine* engine)
+    : UsblDockBase(name, engine)
+{
+}
+
+UsblDock::~UsblDock()
+{
+}
+
+
+
+/// The following lines are template definitions for the various state machine
+// hooks defined by Orocos::RTT. See UsblDock.hpp for more detailed
+// documentation about them.
+
+bool UsblDock::configureHook()
+{
+    if (! UsblDockBase::configureHook())
+        return false;
+
+    if (!_io_port.get().empty())
+    {
+        if(_io_port.get().find("tcp") != std::string::npos)
+            driver->setInterface(ETHERNET);
+        else
+        {
+            std::cout << "WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
+            RTT::log(RTT::Error) << "WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
+            exception(WRONG_INTERFACE);
+            return false;
+        }
+    }
+
+    return true;
+}
+bool UsblDock::startHook()
+{
+    if (! UsblDockBase::startHook())
+        return false;
+    return true;
+}
+void UsblDock::updateHook()
+{
+    UsblDockBase::updateHook();
+}
+void UsblDock::errorHook()
+{
+    UsblDockBase::errorHook();
+}
+void UsblDock::stopHook()
+{
+    UsblDockBase::stopHook();
+}
+void UsblDock::cleanupHook()
+{
+    UsblDockBase::cleanupHook();
+}
+void UsblDock::processParticularNotification(NotificationInfo const &notification)
+{
+    if(notification.notification == USBLLONG)
+    {
+        _position_samples.write(driver->getPose(driver->getPose(notification.buffer)));
+        return ;
+    }
+    else
+    {
+        std::cout << "Notification NOT implemented: \"" << notification.buffer << "\"." << std::endl;
+        RTT::log(RTT::Error) << "Notification NOT implemented: \"" << notification.buffer << "\"." << std::endl;
+        return ;
+    }
+}
+

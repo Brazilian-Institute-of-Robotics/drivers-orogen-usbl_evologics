@@ -1,14 +1,14 @@
 /* Generated from orogen/lib/orogen/templates/tasks/Task.hpp */
 
-#ifndef USBL_OROGEN_USBL_TASK_HPP
-#define USBL_OROGEN_USBL_TASK_HPP
+#ifndef USBL_EVOLOGICS_USBLAUV_TASK_HPP
+#define USBL_EVOLOGICS_USBLAUV_TASK_HPP
 
-#include "usbl_evologics/UsblBase.hpp"
-#include <usbl_evologics/Driver.hpp>
-#include <usbl_evologics/DriverTypes.hpp>
+#include "Task.hpp"
+#include "usbl_evologics/UsblAUVBase.hpp"
+
 namespace usbl_evologics {
 
-    /*! \class Usbl 
+    /*! \class UsblAUV 
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
      * Essential interfaces are operations, data flow ports and properties. These interfaces have been defined using the oroGen specification.
      * In order to modify the interfaces you should (re)use oroGen and rely on the associated workflow.
@@ -17,39 +17,35 @@ namespace usbl_evologics {
      * The name of a TaskContext is primarily defined via:
      \verbatim
      deployment 'deployment_name'
-         task('custom_task_name','usbl_evologics::Usbl')
+         task('custom_task_name','usbl_evologics::UsblAUV')
      end
      \endverbatim
      *  It can be dynamically adapted when the deployment is called with a prefix argument. 
      */
-    class Usbl : public UsblBase
+    class UsblAUV : public UsblAUVBase
     {
-	friend class UsblBase;
+	friend class UsblAUVBase;
     protected:
-        usbl_evologics::Driver driver;
-        //Sended Instant Messages
-        std::vector<usbl_evologics::SendInstantMessage> waiting_instant_messages;
-	bool do_surface;
 
 
 
     public:
-        /** TaskContext constructor for Usbl
+        /** TaskContext constructor for UsblAUV
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
          * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
          */
-        Usbl(std::string const& name = "usbl_evologics::Usbl", TaskCore::TaskState initial_state = Stopped);
+        UsblAUV(std::string const& name = "usbl_evologics::UsblAUV");
 
-        /** TaskContext constructor for Usbl 
+        /** TaskContext constructor for UsblAUV 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
          * \param engine The RTT Execution engine to be used for this task, which serialises the execution of all commands, programs, state machines and incoming events for a task. 
-         * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
+         * 
          */
-        Usbl(std::string const& name, RTT::ExecutionEngine* engine, TaskCore::TaskState initial_state = Stopped);
+        UsblAUV(std::string const& name, RTT::ExecutionEngine* engine);
 
-        /** Default deconstructor of Usbl
+        /** Default deconstructor of UsblAUV
          */
-	~Usbl();
+	~UsblAUV();
 
         /** This hook is called by Orocos when the state machine transitions
          * from PreOperational to Stopped. If it returns false, then the
@@ -108,8 +104,7 @@ namespace usbl_evologics {
          * before calling start() again.
          */
         void cleanupHook();
-        void storePermanently();
-        void writeOutPosition();
+
     };
 }
 

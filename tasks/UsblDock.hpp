@@ -1,13 +1,14 @@
 /* Generated from orogen/lib/orogen/templates/tasks/Task.hpp */
 
-#ifndef USBL_OROGEN_BURSTDATAPRODUCER_TASK_HPP
-#define USBL_OROGEN_BURSTDATAPRODUCER_TASK_HPP
+#ifndef USBL_EVOLOGICS_USBLDOCK_TASK_HPP
+#define USBL_EVOLOGICS_USBLDOCK_TASK_HPP
 
-#include "usbl_evologics/BurstDataProducerBase.hpp"
+#include "Task.hpp"
+#include "usbl_evologics/UsblDockBase.hpp"
 
 namespace usbl_evologics {
 
-    /*! \class BurstDataProducer 
+    /*! \class UsblDock 
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
      * Essential interfaces are operations, data flow ports and properties. These interfaces have been defined using the oroGen specification.
      * In order to modify the interfaces you should (re)use oroGen and rely on the associated workflow.
@@ -16,35 +17,34 @@ namespace usbl_evologics {
      * The name of a TaskContext is primarily defined via:
      \verbatim
      deployment 'deployment_name'
-         task('custom_task_name','usbl_evologics::BurstDataProducer')
+         task('custom_task_name','usbl_evologics::UsblDock')
      end
      \endverbatim
      *  It can be dynamically adapted when the deployment is called with a prefix argument. 
      */
-    class BurstDataProducer : public BurstDataProducerBase
+    class UsblDock : public UsblDockBase
     {
-	friend class BurstDataProducerBase;
+	friend class UsblDockBase;
     protected:
 
 
-
     public:
-        /** TaskContext constructor for BurstDataProducer
+        /** TaskContext constructor for UsblDock
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
          * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
          */
-        BurstDataProducer(std::string const& name = "usbl_evologics::BurstDataProducer", TaskCore::TaskState initial_state = Stopped);
+        UsblDock(std::string const& name = "usbl_evologics::UsblDock");
 
-        /** TaskContext constructor for BurstDataProducer 
+        /** TaskContext constructor for UsblDock 
          * \param name Name of the task. This name needs to be unique to make it identifiable for nameservices. 
          * \param engine The RTT Execution engine to be used for this task, which serialises the execution of all commands, programs, state machines and incoming events for a task. 
-         * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.
+         * 
          */
-        BurstDataProducer(std::string const& name, RTT::ExecutionEngine* engine, TaskCore::TaskState initial_state = Stopped);
+        UsblDock(std::string const& name, RTT::ExecutionEngine* engine);
 
-        /** Default deconstructor of BurstDataProducer
+        /** Default deconstructor of UsblDock
          */
-	~BurstDataProducer();
+	~UsblDock();
 
         /** This hook is called by Orocos when the state machine transitions
          * from PreOperational to Stopped. If it returns false, then the
@@ -103,6 +103,9 @@ namespace usbl_evologics {
          * before calling start() again.
          */
         void cleanupHook();
+
+        virtual void processParticularNotification(NotificationInfo const &notification);
+
     };
 }
 

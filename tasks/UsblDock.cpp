@@ -42,6 +42,10 @@ bool UsblDock::configureHook()
         }
     }
 
+    // Just to be sure the usbl will output position samples.
+    if(!driver->getPositioningDataOutput())
+        driver->setPositioningDataOutput(true);
+
     return true;
 }
 bool UsblDock::startHook()

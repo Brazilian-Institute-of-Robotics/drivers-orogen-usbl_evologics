@@ -13,8 +13,20 @@ task_context "Task" do
    # FALSE, device uses its stored settings profile.
    # TRUE, device uses parameters set in "device_settings".
    property "change_parameters", "bool", false
-   # Device settings.
-   attribute "device_settings", "/usbl_evologics/DeviceSettings"
+   # Set reset drop counter.
+   # FALSE, counter will not be reseted.
+   # TRUE, counter will be reseted.
+   property "reset_drop_counter", "bool", false
+   # Set reset overflow counter.
+   # FALSE, counter will not be reseted.
+   # TRUE, counter will be reseted.
+   property "reset_overflow_counter", "bool", false
+   # Define operation mode. DATA is the default mode.
+   # DATA, raw_data and messages are transmitted over acoustic link.  
+   # COMMAND, raw_data can not be transmitted over acoustic link, remaining exclusively for messages.
+   property "mode", "/usbl_evologics/OperationMode", :DATA   
+   # Desired device settings.
+   attribute "desired_device_settings", "/usbl_evologics/DeviceSettings" 
    # Period for status update. Defaults to one second
    property "status_period", "base/Time"
    
@@ -37,7 +49,7 @@ task_context "Task" do
    # Instant Message receveid from remote device
    output_port "message_output", "/usbl_evologics/ReceiveIM"
    # Raw data receveid from remote device  
-   output_port "raw_data_output", "/iodrivers_base/RawPacket" 
+   output_port "raw_data_output", "/iodrivers_base/RawPacket"  
    
    # TODO need better definition of what need to be outputted  
    # Status of acoustic connection and available free buffer per channel
@@ -45,7 +57,7 @@ task_context "Task" do
    # Acoustic channel performance.
    output_port "acoustic_channel", "/usbl_evologics/AcousticChannel"
 
-   exception_states :WRONG_INTERFACE
+   exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA
 
 end
 

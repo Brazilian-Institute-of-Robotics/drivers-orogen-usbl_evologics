@@ -34,6 +34,8 @@ namespace usbl_evologics {
 	    // Variable that control the sending of new instant message.
 	    bool IM_notification_ack;
 
+	    AcousticConnection acoustic_connection;
+
 	    base::Time mLastStatus;
 
 	    const int MAX_MSG_SIZE = 64;
@@ -126,6 +128,12 @@ namespace usbl_evologics {
          */
         AcousticChannel getAcousticChannelparameters(void);
 
+        /** Get settings of device
+         *
+         * @return DeviceSettings
+         */
+        DeviceSettings getDeviceSettings(void);
+
         /** Update parameters on device.
          *
          * Compare actual with desired settings before update.
@@ -134,13 +142,25 @@ namespace usbl_evologics {
          */
         void updateDeviceParameters(DeviceSettings const &desired_setting, DeviceSettings const &actual_setting);
 
+        /** Reset counters if it is the case.
+         *
+         */
+        void resetCounters(bool drop_counter, bool overflow_counter);
+
         /** Verify if free transmission buffer is big enough to support message.
          *
          * @param buffer to be transmitted to remote device.
          * @param acoustic_connection contains amount of free buffer.
          */
         void checkFreeBuffer(std::string const &buffer, AcousticConnection const &acoustic_connection);
-//        void checkFreeBuffer(std::vector<uint8_t> const &buffer, AcousticConnection const &acoustic_connection);
+
+        /** Filter possible <+++ATcommand> in raw_data_input
+         *
+         *  Do not let raw_data_input mess up with connection/device.
+         *  Exception if found a "+++" in raw_data_input
+         *  @param raw_data_in data that goes to local device and can not have a <+++ATcommand> on it.
+         */
+        void filterRawData( std::string const & raw_data_in);
 
         /** Process notification
          *

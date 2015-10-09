@@ -38,15 +38,28 @@ bool Task::configureHook()
     if (! TaskBase::configureHook())
         return false;
 
+    // Instant Message manager.
     IM_notification_ack = true;
 
-    DeviceSettings settings = _device_settings.get();
-    DeviceSettings current_settings = driver->getCurrentSetting();
+    // Set System Time for current Time
+    driver->setSystemTimeNow();
+
+    //Set operation mode.
+    if(driver->getMode() != _mode.get())
+        driver->setOperationMode(_mode.get());
+
+    DeviceSettings desired_settings = _desired_device_settings.get();
+    DeviceSettings current_settings = getDeviceSettings();
+
     if(_change_parameters.get())
     {
         //TODO need validation
-        updateDeviceParameters(settings, current_settings);
+        updateDeviceParameters(desired_settings, current_settings);
     }
+
+
+    // Reset drop & overflow counter if desired.
+    resetCounters(_reset_drop_counter.get(), _reset_overflow_counter.get());
 
     VersionNumbers device_info = driver->getFirmwareInformation();
     if(device_info.firmwareVersion.find("1.7") == std::string::npos)
@@ -71,10 +84,10 @@ void Task::updateHook()
    if((base::Time::now() - mLastStatus) > _status_period.get())
    {
        mLastStatus = base::Time::now();
+
+       _acoustic_connection.write(driver->getConnectionStatus());
        _acoustic_channel.write(getAcousticChannelparameters());
    }
-
-
 }
 void Task::errorHook()
 {
@@ -87,11 +100,16 @@ void Task::stopHook()
 void Task::cleanupHook()
 {
     TaskBase::cleanupHook();
+
+    //Make sure to set the device to its default operational mode, DATA.
+    if(driver->getMode() == COMMAND)
+        driver->switchToDataMode();
+
 }
 void Task::processIO()
 {
-    AcousticConnection acoustic_connection = driver->getConnectionStatus();
-    _acoustic_connection.write(acoustic_connection);
+
+    acoustic_connection = driver->getConnectionStatus();
 
     // TODO define exactly what to do for each acoustic_connection status
     if(acoustic_connection.status == ONLINE || acoustic_connection.status == INITIATION_ESTABLISH || acoustic_connection.status == INITIATION_LISTEN )
@@ -116,7 +134,10 @@ void Task::processIO()
             std::string buffer(raw_data_input.data.begin(), raw_data_input.data.end());
             checkFreeBuffer(buffer, acoustic_connection);
             if(driver->getMode() == DATA)
+            {
+                filterRawData(buffer);
                 driver->sendRawData(raw_data_input.data);
+            }
             else
                 RTT::log(RTT::Error) << "Device can not send raw_data \""<< raw_data_input.data.data() << "\" in COMMAND mode. Be sure to switch device to DATA mode" << std::endl;
         }
@@ -135,9 +156,30 @@ void Task::processIO()
 
     // An internal error has occurred on device. Manual says to reset the device.
     if(acoustic_connection.status == OFFLINE_ALARM)
-        driver->resetDevice(DEVICE);
+    {
+        std::cout << "Device Internal Error. DEVICE_INTERNAL_ERRORRESET DEVICE" << std::endl;
+        RTT::log(RTT::Error) << "Device Internal Error. RESET DEVICE" << std::endl;
+        exception(DEVICE_INTERNAL_ERROR);
+    }
 }
 
+void Task::resetCounters(bool drop_counter, bool overflow_counter)
+{
+    // Only takes in account the first and actual channel
+    if(drop_counter)
+        driver->resetDropCounter();
+    // Only takes in account the first and actual channel
+    if(overflow_counter)
+        driver->resetOverflowCounter();
+}
+
+DeviceSettings Task::getDeviceSettings(void)
+{
+    DeviceSettings current_settings = driver->getCurrentSetting();
+    // The settings below are not provided by the method getCurrentSetting().
+    current_settings.remoteAddress = driver->getRemoteAddress();
+    return current_settings;
+}
 
 void Task::updateDeviceParameters(DeviceSettings const &desired_setting, DeviceSettings const &actual_setting)
 {
@@ -167,6 +209,9 @@ void Task::updateDeviceParameters(DeviceSettings const &desired_setting, DeviceS
 
     if(desired_setting.promiscuosMode != actual_setting.promiscuosMode)
         driver->setPromiscuosMode(desired_setting.promiscuosMode);
+
+    if(desired_setting.remoteAddress != actual_setting.remoteAddress)
+        driver->setRemoteAddress(desired_setting.remoteAddress);
 
     if(desired_setting.retryCount != actual_setting.retryCount)
         driver->setRetryCount(desired_setting.retryCount);
@@ -198,12 +243,6 @@ void Task::updateDeviceParameters(DeviceSettings const &desired_setting, DeviceS
         if(desired_setting.poolSize.at(0) != actual_setting.poolSize.at(0))
             driver->setPoolSize(desired_setting.poolSize.at(0));
     }
-    // Only takes in account the first and actual channel
-    if(actual_setting.resetDropCount)
-        driver->resetDropCounter();
-    // Only takes in account the first and actual channel
-    if(actual_setting.resetOverflowCounter)
-        driver->resetOverflowCounter();
 }
 
 AcousticChannel Task::getAcousticChannelparameters(void)
@@ -230,6 +269,19 @@ void Task::checkFreeBuffer(std::string const &buffer, AcousticConnection const &
     if(buffer.size() > acoustic_connection.freeBuffer.at(0))
         // By now, only a message is logged. Let the data be dropped so it will be shown in the output port.
         RTT::log(RTT::Error) << "Buffer \"" << buffer << "\" is bigger than free transmission buffer. Split your buffer or reduce the rate of transmission." << std::endl;
+}
+
+// TODO verify
+// Filter possible <+++ATcommand> in raw_data_input
+void Task::filterRawData( std::string const & raw_data_in)
+{
+    // Find "+++"
+    if (raw_data_in.find("+++") != string::npos)
+    {
+        std::cout << "There is the malicious string \"+++\" in raw_data_input. DO NOT use it as it could be interpreted as a command by device." << std::endl;
+        RTT::log(RTT::Error) << "There is the malicious string \"+++\" in raw_data_input. DO NOT use it as it could be interpreted as a command by device." << std::endl;
+        exception(MALICIOUS_SEQUENCE_IN_RAW_DATA);
+    }
 }
 
 void Task::processNotification(NotificationInfo const &notification)

@@ -41,7 +41,12 @@ bool Task::configureHook()
     // Instant Message manager.
     IM_notification_ack = true;
 
-    // Set System Time for current Time
+    if(_io_port.get().find("tcp") != std::string::npos)
+        driver->setInterface(ETHERNET);
+    else if (_io_port.get().find("serial") != std::string::npos)
+        driver->setInterface(SERIAL);
+
+     // Set System Time for current Time
     driver->setSystemTimeNow();
 
     //Set operation mode.
@@ -56,7 +61,6 @@ bool Task::configureHook()
         //TODO need validation
         updateDeviceParameters(desired_settings, current_settings);
     }
-
 
     // Reset drop & overflow counter if desired.
     resetCounters(_reset_drop_counter.get(), _reset_overflow_counter.get());
@@ -88,6 +92,61 @@ void Task::updateHook()
        _acoustic_connection.write(driver->getConnectionStatus());
        _acoustic_channel.write(getAcousticChannelparameters());
    }
+
+   acoustic_connection = driver->getConnectionStatus();
+
+   // TODO define exactly what to do for each acoustic_connection status
+   if(acoustic_connection.status == ONLINE || acoustic_connection.status == INITIATION_ESTABLISH || acoustic_connection.status == INITIATION_LISTEN )
+   {
+       // Need a flow management of data be sent to device.
+       // Only send a new Instant Message if a acknowledgment notification of previously message was received if it was required.
+       while(IM_notification_ack && _message_input.read(send_IM) == RTT::NewData)
+       {
+           // Check free transmission buffer and instant message size.
+           checkFreeBuffer(driver->getStringOfIM(send_IM), acoustic_connection);
+           if(send_IM.buffer.size() > MAX_MSG_SIZE)
+               RTT::log(RTT::Error) << "Instant Message \""<< send_IM.buffer << "\" is longer than MAX_MSG_SIZE of \"" << MAX_MSG_SIZE << "\" bytes. It maybe not be sent to remote device " << std::endl;
+
+           std::cout << "Lets send new MESSAGE" <<std::endl;
+           driver->sendInstantMessage(send_IM);
+           if(send_IM.deliveryReport)
+               IM_notification_ack = false;
+       }
+
+       iodrivers_base::RawPacket raw_data_input;
+       while(_raw_data_input.read(raw_data_input) == RTT::NewData)
+       {
+           std::string buffer(raw_data_input.data.begin(), raw_data_input.data.end());
+           checkFreeBuffer(buffer, acoustic_connection);
+           if(driver->getMode() == DATA)
+           {
+               filterRawData(buffer);
+               driver->sendRawData(raw_data_input.data);
+           }
+           else
+               RTT::log(RTT::Error) << "Device can not send raw_data \""<< raw_data_input.data.data() << "\" in COMMAND mode. Be sure to switch device to DATA mode" << std::endl;
+       }
+   }
+
+   while(driver->hasNotification())
+       processNotification(driver->getNotification());
+
+   while(driver->hasRawData())
+   {
+       iodrivers_base::RawPacket raw_packet_buffer;
+       raw_packet_buffer.time = base::Time::now();
+       raw_packet_buffer.data = driver->getRawData();
+       _raw_data_output.write(raw_packet_buffer);
+   }
+
+   // An internal error has occurred on device. Manual says to reset the device.
+   if(acoustic_connection.status == OFFLINE_ALARM)
+   {
+       std::cout << "Device Internal Error. DEVICE_INTERNAL_ERRORRESET DEVICE" << std::endl;
+       RTT::log(RTT::Error) << "Device Internal Error. RESET DEVICE" << std::endl;
+       exception(DEVICE_INTERNAL_ERROR);
+   }
+
 }
 void Task::errorHook()
 {
@@ -108,59 +167,8 @@ void Task::cleanupHook()
 }
 void Task::processIO()
 {
-
-    acoustic_connection = driver->getConnectionStatus();
-
-    // TODO define exactly what to do for each acoustic_connection status
-    if(acoustic_connection.status == ONLINE || acoustic_connection.status == INITIATION_ESTABLISH || acoustic_connection.status == INITIATION_LISTEN )
-    {
-        // Need a flow management of data be sent to device.
-        // Only send a new Instant Message if a acknowledgment notification of previously message was received if it was required.
-        while(IM_notification_ack && _message_input.read(send_IM) == RTT::NewData)
-        {
-            // Check free transmission buffer and instant message size.
-            checkFreeBuffer(driver->getStringOfIM(send_IM), acoustic_connection);
-            if(send_IM.buffer.size() > MAX_MSG_SIZE)
-                RTT::log(RTT::Error) << "Instant Message \""<< send_IM.buffer << "\" is longer than MAX_MSG_SIZE of \"" << MAX_MSG_SIZE << "\" bytes. It maybe not be sent to remote device " << std::endl;
-
-            driver->sendInstantMessage(send_IM);
-            if(send_IM.deliveryReport)
-                IM_notification_ack = false;
-        }
-
-        iodrivers_base::RawPacket raw_data_input;
-        while(_raw_data_input.read(raw_data_input) == RTT::NewData)
-        {
-            std::string buffer(raw_data_input.data.begin(), raw_data_input.data.end());
-            checkFreeBuffer(buffer, acoustic_connection);
-            if(driver->getMode() == DATA)
-            {
-                filterRawData(buffer);
-                driver->sendRawData(raw_data_input.data);
-            }
-            else
-                RTT::log(RTT::Error) << "Device can not send raw_data \""<< raw_data_input.data.data() << "\" in COMMAND mode. Be sure to switch device to DATA mode" << std::endl;
-        }
-    }
-
-    while(driver->hasNotification())
-        processNotification(driver->getNotification());
-
-    while(driver->hasRawData())
-    {
-        iodrivers_base::RawPacket raw_packet_buffer;
-        raw_packet_buffer.time = base::Time::now();
-        raw_packet_buffer.data = driver->getRawData();
-        _raw_data_output.write(raw_packet_buffer);
-    }
-
-    // An internal error has occurred on device. Manual says to reset the device.
-    if(acoustic_connection.status == OFFLINE_ALARM)
-    {
-        std::cout << "Device Internal Error. DEVICE_INTERNAL_ERRORRESET DEVICE" << std::endl;
-        RTT::log(RTT::Error) << "Device Internal Error. RESET DEVICE" << std::endl;
-        exception(DEVICE_INTERNAL_ERROR);
-    }
+    // TODO enqueue RawData and Notification
+    //driver->readResponse();
 }
 
 void Task::resetCounters(bool drop_counter, bool overflow_counter)

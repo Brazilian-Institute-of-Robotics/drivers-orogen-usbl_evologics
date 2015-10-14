@@ -31,9 +31,7 @@ bool UsblDock::configureHook()
 
     if (!_io_port.get().empty())
     {
-        if(_io_port.get().find("tcp") != std::string::npos)
-            driver->setInterface(ETHERNET);
-        else
+        if(_io_port.get().find("tcp") == std::string::npos)
         {
             std::cout << "WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
             RTT::log(RTT::Error) << "WRONG INTERFACE, define tcp connection in _io_port" << std::endl;

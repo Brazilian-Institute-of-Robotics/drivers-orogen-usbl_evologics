@@ -105,7 +105,7 @@ void Task::updateHook()
            // Check free transmission buffer and instant message size.
            checkFreeBuffer(driver->getStringOfIM(send_IM), acoustic_connection);
            if(send_IM.buffer.size() > MAX_MSG_SIZE)
-               RTT::log(RTT::Error) << "Instant Message \""<< send_IM.buffer << "\" is longer than MAX_MSG_SIZE of \"" << MAX_MSG_SIZE << "\" bytes. It maybe not be sent to remote device " << std::endl;
+               RTT::log(RTT::Error) << "Instant Message \""<< UsblParser::printBuffer(send_IM.buffer) << "\" is longer than MAX_MSG_SIZE of \"" << MAX_MSG_SIZE << "\" bytes. It maybe not be sent to remote device " << std::endl;
 
            std::cout << "Lets send new MESSAGE" <<std::endl;
            driver->sendInstantMessage(send_IM);
@@ -142,7 +142,7 @@ void Task::updateHook()
    // An internal error has occurred on device. Manual says to reset the device.
    if(acoustic_connection.status == OFFLINE_ALARM)
    {
-       std::cout << "Device Internal Error. DEVICE_INTERNAL_ERRORRESET DEVICE" << std::endl;
+       std::cout << "Device Internal Error. DEVICE_INTERNAL_ERROR. RESET DEVICE" << std::endl;
        RTT::log(RTT::Error) << "Device Internal Error. RESET DEVICE" << std::endl;
        exception(DEVICE_INTERNAL_ERROR);
    }
@@ -276,7 +276,7 @@ void Task::checkFreeBuffer(std::string const &buffer, AcousticConnection const &
     // Only check the first and actual channel.
     if(buffer.size() > acoustic_connection.freeBuffer.at(0))
         // By now, only a message is logged. Let the data be dropped so it will be shown in the output port.
-        RTT::log(RTT::Error) << "Buffer \"" << buffer << "\" is bigger than free transmission buffer. Split your buffer or reduce the rate of transmission." << std::endl;
+        RTT::log(RTT::Error) << "Buffer \"" << UsblParser::printBuffer(buffer) << "\" is bigger than free transmission buffer. Split your buffer or reduce the rate of transmission." << std::endl;
 }
 
 // TODO verify
@@ -303,8 +303,8 @@ void Task::processNotification(NotificationInfo const &notification)
     {
         if(send_IM.deliveryReport != driver->getIMDeliveryReport(notification.buffer))
         {
-            std::cout << "Device did not receive a delivered acknowledgment for Instant Message: \"" << send_IM.buffer << "\"" << std::endl;
-            RTT::log(RTT::Error) << "Device did not receive a delivered acknowledgment for Instant Message: \"" << send_IM.buffer << "\"" << std::endl;
+            std::cout << "Device did not receive a delivered acknowledgment for Instant Message: \"" << UsblParser::printBuffer(send_IM.buffer) << "\"" << std::endl;
+            RTT::log(RTT::Error) << "Device did not receive a delivered acknowledgment for Instant Message: \"" << UsblParser::printBuffer(send_IM.buffer) << "\"" << std::endl;
         }
         if(!IM_notification_ack)
             IM_notification_ack = true;
@@ -312,8 +312,8 @@ void Task::processNotification(NotificationInfo const &notification)
     }
     else if(notification.notification == CANCELED_IM)
     {
-        std::cout << "Error sending Instant Message: \"" << send_IM.buffer << "\". Be sure to wait delivery of last IM." << std::endl;
-        RTT::log(RTT::Error) << "Error sending Instant Message: \"" << send_IM.buffer << "\". Be sure to wait delivery of last IM." << std::endl;
+        std::cout << "Error sending Instant Message: \"" << UsblParser::printBuffer(send_IM.buffer) << "\". Be sure to wait delivery of last IM." << std::endl;
+        RTT::log(RTT::Error) << "Error sending Instant Message: \"" << UsblParser::printBuffer(send_IM.buffer) << "\". Be sure to wait delivery of last IM." << std::endl;
         return ;
     }
     processParticularNotification(notification);
@@ -321,6 +321,6 @@ void Task::processNotification(NotificationInfo const &notification)
 
 void Task::processParticularNotification(NotificationInfo const &notification)
 {
-    std::cout << "Notification NOT implemented: \"" << notification.buffer << "\"." << std::endl;
-    RTT::log(RTT::Error) << "Notification NOT implemented: \"" << notification.buffer << "\"." << std::endl;
+    std::cout << "Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+    RTT::log(RTT::Error) << "Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
 }

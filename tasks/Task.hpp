@@ -46,8 +46,31 @@ namespace usbl_evologics {
 
 	    const int MAX_MSG_SIZE = 64;
 
+        /** Reset Device to stored settings and restart it.
+         *
+         *  TCP connection will be closed, and device restart in DATA mode.
+         */
+        virtual void resetDevice(void);
+
+        /** Clear the transmission buffer - drop raw data and instant message
+         *
+         */
+        virtual void clearTransmissionBuffer(void);
+
+        /** Store current settings.
+         *
+         */
+        virtual void storeSettings(void);
+
+        /** Restore Factory Settings and reset device.
+         *
+         */
+        virtual void restoreFactorySettings(void);
+
 
     public:
+
+
         /** TaskContext constructor for Task
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
          * \param initial_state The initial TaskState of the TaskContext. Default is Stopped state.

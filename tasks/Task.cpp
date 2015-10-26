@@ -21,6 +21,29 @@ Task::~Task()
 {
 }
 
+// Reset Device to stored settings and restart it.
+void Task::resetDevice(void)
+{
+    driver->resetDevice(DEVICE);
+}
+
+// Clear the transmission buffer - drop raw data and instant message
+void Task::clearTransmissionBuffer(void)
+{
+    driver->resetDevice(SEND_BUFFER);
+}
+
+// Store current settings.
+void Task::storeSettings(void)
+{
+    driver->storeCurrentSettings();
+}
+
+// Restore Factory Settings and reset device.
+void Task::restoreFactorySettings(void)
+{
+    driver->RestoreFactorySettings();
+}
 
 
 /// The following lines are template definitions for the various state machine

@@ -59,6 +59,23 @@ task_context "Task" do
    # Delivering status of "message_input".  
    output_port "message_status", "/usbl_evologics/MessageStatus"
 
+   ###################################
+   ##   Operations
+   ###################################
+        
+   # Reset Device to stored settings and restart it.
+   operation('resetDevice')
+  
+   # Clear the transmission buffer - drop raw data and instant message
+   operation('clearTransmissionBuffer')
+  
+   # Store current settings.
+   operation('storeSettings')
+  
+   # Restore Factory Settings.
+   operation('restoreFactorySettings')
+  
+
    exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA
 
 end

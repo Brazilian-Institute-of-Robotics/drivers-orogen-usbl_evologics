@@ -38,36 +38,37 @@ bool Task::configureHook()
     if (! TaskBase::configureHook())
         return false;
 
-    // Instant Message manager.
-    IM_notification_ack = true;
-
+    // Set interface
     if(_io_port.get().find("tcp") != std::string::npos)
         driver->setInterface(ETHERNET);
     else if (_io_port.get().find("serial") != std::string::npos)
         driver->setInterface(SERIAL);
 
-     // Set System Time for current Time
+     // Set System Time for current Time.
     driver->setSystemTimeNow();
 
-    //Set operation mode.
+    //Set operation mode. Default DATA mode.
     if(driver->getMode() != _mode.get())
         driver->setOperationMode(_mode.get());
 
+    // Get parameters.
     DeviceSettings desired_settings = _desired_device_settings.get();
-    DeviceSettings current_settings = getDeviceSettings();
-
+    current_settings = getDeviceSettings();
+    // Update parameters.
     if(_change_parameters.get())
     {
         //TODO need validation
-        updateDeviceParameters(desired_settings, current_settings);
+        driver->updateDeviceParameters(desired_settings, current_settings);
+        current_settings = desired_settings;
     }
 
     // Reset drop & overflow counter if desired.
     resetCounters(_reset_drop_counter.get(), _reset_overflow_counter.get());
 
+    // Log device's information
     VersionNumbers device_info = driver->getFirmwareInformation();
     if(device_info.firmwareVersion.find("1.7") == std::string::npos)
-        RTT::log(RTT::Error) << "Component was developed for firmware version \"1.7\" and actual version is: \""<< device_info.firmwareVersion <<"\". Be aware of eventual incompatibility." << std::endl;
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Component was developed for firmware version \"1.7\" and actual version is: \""<< device_info.firmwareVersion <<"\". Be aware of eventual incompatibility." << std::endl;
     RTT::log(RTT::Info) << "USBL's firmware information: Firmware version: \""<< device_info.firmwareVersion <<"\"; Physical and Data-Link layer protocol: \""<<
             device_info.accousticVersion <<"\"; Manufacturer: \""<< device_info.manufacturer << "\"" << std::endl;
 
@@ -78,41 +79,62 @@ bool Task::startHook()
     if (! TaskBase::startHook())
         return false;
 
-    mLastStatus = base::Time::now();
+    lastStatus = base::Time::now();
+
     return true;
 }
 void Task::updateHook()
 {
     TaskBase::updateHook();
 
-   if((base::Time::now() - mLastStatus) > _status_period.get())
+    // Output status
+   if((base::Time::now() - lastStatus) > _status_period.get())
    {
-       mLastStatus = base::Time::now();
+       lastStatus = base::Time::now();
 
        _acoustic_connection.write(driver->getConnectionStatus());
-       _acoustic_channel.write(getAcousticChannelparameters());
+       _acoustic_channel.write(driver->getAcousticChannelparameters());
+       MessageStatus message_status;
+       message_status.status = driver->getIMDeliveryStatus();
+       if(message_status.status != EMPTY && !queueSendIM.empty())
+           message_status.sendIm = queueSendIM.front();
+       message_status.time = base::Time::now();
+       _message_status.write(message_status);
    }
 
-   acoustic_connection = driver->getConnectionStatus();
+   SendIM send_IM;
+   // Buffer Message, once usbl doesn't queue messages, and it doesn't send several messages in a row.
+   while(_message_input.read(send_IM) == RTT::NewData)
+   {
+       // Check size of Message. It can't be bigger than MAX_MSG_SIZE, according device's manual.
+       if(send_IM.buffer.size() > MAX_MSG_SIZE)
+           RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Instant Message \""<< UsblParser::printBuffer(queueSendIM.front().buffer) << "\" is longer than MAX_MSG_SIZE of \"" << MAX_MSG_SIZE << "\" bytes. It will not be sent to remote device. " << std::endl;
+       // Check buffer size.
+       else if(queueSendIM.size() > MAX_QUEUE_MSG_SIZE)
+           RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Queue of Instant Message has passed it's maximum size of \""<< MAX_QUEUE_MSG_SIZE << "\" and will not be queued. Reduce the rate of sending message." << std::endl;
+       else
+           queueSendIM.push(send_IM);
+   }
 
+   // Get acoustic connection status
+   acoustic_connection = driver->getConnectionStatus();
    // TODO define exactly what to do for each acoustic_connection status
    if(acoustic_connection.status == ONLINE || acoustic_connection.status == INITIATION_ESTABLISH || acoustic_connection.status == INITIATION_LISTEN )
    {
-       // Need a flow management of data be sent to device.
-       // Only send a new Instant Message if a acknowledgment notification of previously message was received if it was required.
-       while(IM_notification_ack && _message_input.read(send_IM) == RTT::NewData)
+       // Only send a new Instant Message if there is no other message been transmitted or if device doesn't wait for report of previously message.
+       while(driver->getIMDeliveryStatus() == EMPTY && !queueSendIM.empty())
        {
            // Check free transmission buffer and instant message size.
-           checkFreeBuffer(driver->getStringOfIM(send_IM), acoustic_connection);
-           if(send_IM.buffer.size() > MAX_MSG_SIZE)
-               RTT::log(RTT::Error) << "Instant Message \""<< UsblParser::printBuffer(send_IM.buffer) << "\" is longer than MAX_MSG_SIZE of \"" << MAX_MSG_SIZE << "\" bytes. It maybe not be sent to remote device " << std::endl;
+           checkFreeBuffer(driver->getStringOfIM(queueSendIM.front()), acoustic_connection);
 
-           std::cout << "Lets send new MESSAGE" <<std::endl;
-           driver->sendInstantMessage(send_IM);
-           if(send_IM.deliveryReport)
-               IM_notification_ack = false;
+           // Send latest message in queue.
+           driver->sendInstantMessage(queueSendIM.front());
+           // If no delivery report is requested, pop message from queue.
+           if(!queueSendIM.front().deliveryReport)
+               queueSendIM.pop();
        }
 
+       // Transmit raw_data
        iodrivers_base::RawPacket raw_data_input;
        while(_raw_data_input.read(raw_data_input) == RTT::NewData)
        {
@@ -124,13 +146,15 @@ void Task::updateHook()
                driver->sendRawData(raw_data_input.data);
            }
            else
-               RTT::log(RTT::Error) << "Device can not send raw_data \""<< raw_data_input.data.data() << "\" in COMMAND mode. Be sure to switch device to DATA mode" << std::endl;
+               RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device can not send raw_data \""<< raw_data_input.data.data() << "\" in COMMAND mode. Be sure to switch device to DATA mode" << std::endl;
        }
    }
 
+   // Process received notification from device
    while(driver->hasNotification())
        processNotification(driver->getNotification());
 
+   // Process raw_data from remote device
    while(driver->hasRawData())
    {
        iodrivers_base::RawPacket raw_packet_buffer;
@@ -142,8 +166,8 @@ void Task::updateHook()
    // An internal error has occurred on device. Manual says to reset the device.
    if(acoustic_connection.status == OFFLINE_ALARM)
    {
-       std::cout << "Device Internal Error. DEVICE_INTERNAL_ERROR. RESET DEVICE" << std::endl;
-       RTT::log(RTT::Error) << "Device Internal Error. RESET DEVICE" << std::endl;
+       std::cout << "Usbl_evologics Task.cpp. Device Internal Error. DEVICE_INTERNAL_ERROR. RESET DEVICE" << std::endl;
+       RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << std::endl;
        exception(DEVICE_INTERNAL_ERROR);
    }
 
@@ -189,94 +213,12 @@ DeviceSettings Task::getDeviceSettings(void)
     return current_settings;
 }
 
-void Task::updateDeviceParameters(DeviceSettings const &desired_setting, DeviceSettings const &actual_setting)
-{
-    if(desired_setting.carrierWaveformId != actual_setting.carrierWaveformId)
-        driver->setCarrierWaveformID(desired_setting.carrierWaveformId);
-
-    if(desired_setting.clusterSize != actual_setting.clusterSize)
-        driver->setClusterSize(desired_setting.clusterSize);
-
-    if(desired_setting.highestAddress != actual_setting.highestAddress)
-        driver->setHighestAddress(desired_setting.highestAddress);
-
-    if(desired_setting.idleTimeout != actual_setting.idleTimeout)
-        driver->setIdleTimeout(desired_setting.idleTimeout);
-
-    if(desired_setting.imRetry != actual_setting.imRetry)
-        driver->setIMRetry(desired_setting.imRetry);
-
-    if(desired_setting.localAddress != actual_setting.localAddress)
-        driver->setLocalAddress(desired_setting.localAddress);
-
-    if(desired_setting.lowGain != actual_setting.lowGain)
-        driver->setLowGain(desired_setting.lowGain);
-
-    if(desired_setting.packetTime != actual_setting.packetTime)
-        driver->setPacketTime(desired_setting.packetTime);
-
-    if(desired_setting.promiscuosMode != actual_setting.promiscuosMode)
-        driver->setPromiscuosMode(desired_setting.promiscuosMode);
-
-    if(desired_setting.remoteAddress != actual_setting.remoteAddress)
-        driver->setRemoteAddress(desired_setting.remoteAddress);
-
-    if(desired_setting.retryCount != actual_setting.retryCount)
-        driver->setRetryCount(desired_setting.retryCount);
-
-    if(desired_setting.retryTimeout != actual_setting.retryTimeout)
-        driver->setRetryTimeout(desired_setting.retryTimeout);
-
-    if(desired_setting.sourceLevel != actual_setting.sourceLevel)
-        driver->setSourceLevel(desired_setting.sourceLevel);
-
-    if(desired_setting.sourceLevelControl != actual_setting.sourceLevelControl)
-        driver->setSourceLevelcontrol(desired_setting.sourceLevelControl);
-
-    if(desired_setting.speedSound != actual_setting.speedSound)
-        driver->setSpeedSound(desired_setting.speedSound);
-
-    if(desired_setting.wuActiveTime != actual_setting.wuActiveTime)
-        driver->setWakeUpActiveTime(desired_setting.wuActiveTime);
-
-    if(desired_setting.wuHoldTimeout != actual_setting.wuHoldTimeout)
-        driver->setWakeUpHoldTimeout(desired_setting.wuHoldTimeout);
-
-    if(desired_setting.wuPeriod != actual_setting.wuPeriod)
-        driver->setWakeUpPeriod(desired_setting.wuPeriod);
-
-    if(!actual_setting.poolSize.empty() && !desired_setting.poolSize.empty())
-    {
-        // Only takes in account the first and actual channel
-        if(desired_setting.poolSize.at(0) != actual_setting.poolSize.at(0))
-            driver->setPoolSize(desired_setting.poolSize.at(0));
-    }
-}
-
-AcousticChannel Task::getAcousticChannelparameters(void)
-{
-    AcousticChannel channel;
-    channel.time = base::Time::now();
-    channel.rssi = driver->getRSSI();
-    channel.localBitrate = driver->getLocalToRemoteBitrate();
-    channel.remoteBitrate = driver->getRemoteToLocalBitrate();
-    channel.propagationTime = driver->getPropagationTime();
-    channel.relativeVelocity = driver->getRelativeVelocity();
-    channel.signalIntegrity = driver->getSignalIntegrity();
-    channel.multiPath = driver->getMultipath();
-    channel.channelNumber = driver->getChannelNumber();
-    channel.dropCount = driver->getDropCounter();
-    channel.overflowCounter = driver->getOverflowCounter();
-
-    return channel;
-}
-
 void Task::checkFreeBuffer(std::string const &buffer, AcousticConnection const &acoustic_connection)
 {
     // Only check the first and actual channel.
     if(buffer.size() > acoustic_connection.freeBuffer.at(0))
         // By now, only a message is logged. Let the data be dropped so it will be shown in the output port.
-        RTT::log(RTT::Error) << "Buffer \"" << UsblParser::printBuffer(buffer) << "\" is bigger than free transmission buffer. Split your buffer or reduce the rate of transmission." << std::endl;
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Buffer \"" << UsblParser::printBuffer(buffer) << "\" has size of \"" << buffer.size() << "\" which is bigger than free transmission buffer (\""<< acoustic_connection.freeBuffer.at(0) <<"\"). Split your buffer or reduce the rate of transmission." << std::endl;
 }
 
 // TODO verify
@@ -286,8 +228,9 @@ void Task::filterRawData( std::string const & raw_data_in)
     // Find "+++"
     if (raw_data_in.find("+++") != string::npos)
     {
-        std::cout << "There is the malicious string \"+++\" in raw_data_input. DO NOT use it as it could be interpreted as a command by device." << std::endl;
-        RTT::log(RTT::Error) << "There is the malicious string \"+++\" in raw_data_input. DO NOT use it as it could be interpreted as a command by device." << std::endl;
+        std::string error_msg = "Usbl_evologics Task.cpp. There is the malicious string \"+++\" in raw_data_input. DO NOT use it as it could be interpreted as a command by device.";
+        std::cout << error_msg << std::endl;
+        RTT::log(RTT::Error) << error_msg << std::endl;
         exception(MALICIOUS_SEQUENCE_IN_RAW_DATA);
     }
 }
@@ -301,26 +244,52 @@ void Task::processNotification(NotificationInfo const &notification)
     }
     else if(notification.notification == DELIVERY_REPORT)
     {
-        if(send_IM.deliveryReport != driver->getIMDeliveryReport(notification.buffer))
+        MessageStatus message_status;
+        if(!driver->getIMDeliveryReport(notification.buffer))
         {
-            std::cout << "Device did not receive a delivered acknowledgment for Instant Message: \"" << UsblParser::printBuffer(send_IM.buffer) << "\"" << std::endl;
-            RTT::log(RTT::Error) << "Device did not receive a delivered acknowledgment for Instant Message: \"" << UsblParser::printBuffer(send_IM.buffer) << "\"" << std::endl;
+            message_status.status = FAILED;
+            std::stringstream error_msg;
+            if(!queueSendIM.empty())
+                error_msg << "Usbl_evologics Task.cpp. Device did not receive a delivered acknowledgment for Instant Message: \"" << UsblParser::printBuffer(queueSendIM.front().buffer) << "\". Usbl will make \"" << current_settings.imRetry << "\" retries to send message";
+            else
+                error_msg << "Usbl_evologics Task.cpp. Device did not receive a delivered acknowledgment for Instant Message. But I don't know from which message is this notification. Maybe from an old one.";
+            std::cout << error_msg.str() << std::endl;
+            RTT::log(RTT::Error) << error_msg.str() << std::endl;
         }
-        if(!IM_notification_ack)
-            IM_notification_ack = true;
+        else
+            message_status.status = DELIVERED;
+        if(!queueSendIM.empty())
+        {
+            message_status.sendIm = queueSendIM.front();
+            queueSendIM.pop();
+        }
+        else
+        {
+            std::string error_msg = "Usbl_evologics Task.cpp. Device receive a delivered acknowledgment for Instant Message. But I don't know from which message is this notification. Maybe from an old one.";
+            std::cout << error_msg << std::endl;
+            RTT::log(RTT::Error) << error_msg << std::endl;
+        }
+        message_status.time = base::Time::now();
+        _message_status.write(message_status);
         return ;
     }
     else if(notification.notification == CANCELED_IM)
     {
-        std::cout << "Error sending Instant Message: \"" << UsblParser::printBuffer(send_IM.buffer) << "\". Be sure to wait delivery of last IM." << std::endl;
-        RTT::log(RTT::Error) << "Error sending Instant Message: \"" << UsblParser::printBuffer(send_IM.buffer) << "\". Be sure to wait delivery of last IM." << std::endl;
+        std::stringstream error_msg;
+        if(!queueSendIM.empty())
+            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message: \"" << UsblParser::printBuffer(send_IM.buffer) << "\". Be sure to wait delivery of last IM.";
+        else
+            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message. But I don't know from which message is this notification. Maybe from an old one, or one that doesn't require notification.";
+        std::cout << error_msg.str() << std::endl;
+        RTT::log(RTT::Error) << error_msg.str() << std::endl;
         return ;
     }
-    processParticularNotification(notification);
+    else
+        processParticularNotification(notification);
 }
 
 void Task::processParticularNotification(NotificationInfo const &notification)
 {
-    std::cout << "Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
-    RTT::log(RTT::Error) << "Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+    std::cout << "Usbl_evologics Task.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+    RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
 }

@@ -6,6 +6,7 @@
 #include "usbl_evologics/Driver.hpp"
 #include "base/samples/RigidBodyState.hpp"
 #include "usbl_evologics/TaskBase.hpp"
+#include <queue>
 
 namespace usbl_evologics {
 
@@ -30,13 +31,18 @@ namespace usbl_evologics {
 
 	    boost::shared_ptr<Driver>  driver;
 
+	    std::queue<SendIM> queueSendIM;
+	    // Arbitrarily defining a max size for queueSendIM.
+	    int MAX_QUEUE_MSG_SIZE = 50;
 	    SendIM send_IM;
 	    // Variable that control the sending of new instant message.
 	    bool IM_notification_ack;
 
 	    AcousticConnection acoustic_connection;
 
-	    base::Time mLastStatus;
+	    base::Time lastStatus;
+
+	    DeviceSettings current_settings;
 
 	    const int MAX_MSG_SIZE = 64;
 

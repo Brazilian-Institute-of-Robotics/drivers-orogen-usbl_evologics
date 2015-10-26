@@ -33,8 +33,8 @@ bool UsblDock::configureHook()
     {
         if(_io_port.get().find("tcp") == std::string::npos)
         {
-            std::cout << "WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
-            RTT::log(RTT::Error) << "WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
+            std::cout << "Usbl_evologics UsblDock.cpp. WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
+            RTT::log(RTT::Error) << "Usbl_evologics UsblDock.cpp. WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
             exception(WRONG_INTERFACE);
             return false;
         }
@@ -77,8 +77,8 @@ void UsblDock::processParticularNotification(NotificationInfo const &notificatio
     }
     else
     {
-        std::cout << "Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
-        RTT::log(RTT::Error) << "Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+        std::cout << "Usbl_evologics UsblDock.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+        RTT::log(RTT::Error) << "Usbl_evologics UsblDock.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
         return ;
     }
 }

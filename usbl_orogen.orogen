@@ -56,6 +56,8 @@ task_context "Task" do
    output_port "acoustic_connection", "/usbl_evologics/AcousticConnection"
    # Acoustic channel performance.
    output_port "acoustic_channel", "/usbl_evologics/AcousticChannel"
+   # Delivering status of "message_input".  
+   output_port "message_status", "/usbl_evologics/MessageStatus"
 
    exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA
 

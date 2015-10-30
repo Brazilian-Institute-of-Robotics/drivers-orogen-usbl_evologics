@@ -144,9 +144,11 @@ void Task::updateHook()
    // TODO define exactly what to do for each acoustic_connection status
    if(acoustic_connection.status == ONLINE || acoustic_connection.status == INITIATION_ESTABLISH || acoustic_connection.status == INITIATION_LISTEN )
    {
+       std::cout << " Ready connection"<< std::endl;
        // Only send a new Instant Message if there is no other message been transmitted or if device doesn't wait for report of previously message.
-       while(driver->getIMDeliveryStatus() == EMPTY && !queueSendIM.empty())
+       while((driver->getIMDeliveryStatus() == EMPTY || driver->getIMDeliveryStatus() == FAILED) && !queueSendIM.empty())
        {
+           std::cout << "Write message"<<std::endl;
            // Check free transmission buffer and instant message size.
            checkFreeBuffer(driver->getStringOfIM(queueSendIM.front()), acoustic_connection);
 

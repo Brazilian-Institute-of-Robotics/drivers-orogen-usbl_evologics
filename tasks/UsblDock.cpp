@@ -75,6 +75,12 @@ void UsblDock::processParticularNotification(NotificationInfo const &notificatio
         _position_samples.write(driver->getPose(driver->getPose(notification.buffer)));
         return ;
     }
+    else if(notification.notification == USBLANGLE)
+    {
+        std::string info = "Usbl_evologics UsblDock.cpp. Device is not able to compute exact position of remote device. Instead got it's direction: ";
+        std::cout << info << "\"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+        RTT::log(RTT::Error) << info << "\"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+    }
     else
     {
         std::cout << "Usbl_evologics UsblDock.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;

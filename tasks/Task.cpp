@@ -144,11 +144,10 @@ void Task::updateHook()
    // TODO define exactly what to do for each acoustic_connection status
    if(acoustic_connection.status == ONLINE || acoustic_connection.status == INITIATION_ESTABLISH || acoustic_connection.status == INITIATION_LISTEN )
    {
-       std::cout << " Ready connection"<< std::endl;
        // Only send a new Instant Message if there is no other message been transmitted or if device doesn't wait for report of previously message.
-       while((driver->getIMDeliveryStatus() == EMPTY || driver->getIMDeliveryStatus() == FAILED) && !queueSendIM.empty())
+       DeliveryStatus delivery_status = driver->getIMDeliveryStatus();
+       while((delivery_status == EMPTY || delivery_status == FAILED) && !queueSendIM.empty())
        {
-           std::cout << "Write message"<<std::endl;
            // Check free transmission buffer and instant message size.
            checkFreeBuffer(driver->getStringOfIM(queueSendIM.front()), acoustic_connection);
 
@@ -194,6 +193,7 @@ void Task::updateHook()
        std::cout << "Usbl_evologics Task.cpp. Device Internal Error. DEVICE_INTERNAL_ERROR. RESET DEVICE" << std::endl;
        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << std::endl;
        exception(DEVICE_INTERNAL_ERROR);
+       throw;
    }
 
 }
@@ -217,7 +217,13 @@ void Task::cleanupHook()
 void Task::processIO()
 {
     // TODO enqueue RawData and Notification
-    //driver->readResponse();
+    ResponseInfo response_info;
+    if((response_info = driver->readResponse().response) != NO_RESPONSE)
+    {
+        std::string info = "Usbl_evologics Task.cpp. In processIO, unexpected read a response of a request: ";
+        std::cout << info <<"\""<< response_info.buffer << "\"" << std::endl;
+        RTT::log(RTT::Error) << info <<"\""<< response_info.buffer << "\"" << std::endl;
+    }
 }
 
 void Task::resetCounters(bool drop_counter, bool overflow_counter)
@@ -257,6 +263,7 @@ void Task::filterRawData( std::string const & raw_data_in)
         std::cout << error_msg << std::endl;
         RTT::log(RTT::Error) << error_msg << std::endl;
         exception(MALICIOUS_SEQUENCE_IN_RAW_DATA);
+        throw;
     }
 }
 

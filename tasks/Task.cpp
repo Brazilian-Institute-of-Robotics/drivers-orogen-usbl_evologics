@@ -218,7 +218,7 @@ void Task::processIO()
 {
     // TODO enqueue RawData and Notification
     ResponseInfo response_info;
-    if((response_info = driver->readResponse().response) != NO_RESPONSE)
+    if((response_info = driver->readResponse()).response != NO_RESPONSE)
     {
         std::string info = "Usbl_evologics Task.cpp. In processIO, unexpected read a response of a request: ";
         std::cout << info <<"\""<< response_info.buffer << "\"" << std::endl;

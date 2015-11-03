@@ -141,12 +141,13 @@ void Task::updateHook()
 
    // Get acoustic connection status
    acoustic_connection = driver->getConnectionStatus();
+
    // TODO define exactly what to do for each acoustic_connection status
    if(acoustic_connection.status == ONLINE || acoustic_connection.status == INITIATION_ESTABLISH || acoustic_connection.status == INITIATION_LISTEN )
    {
        // Only send a new Instant Message if there is no other message been transmitted or if device doesn't wait for report of previously message.
-       DeliveryStatus delivery_status = driver->getIMDeliveryStatus();
-       while((delivery_status == EMPTY || delivery_status == FAILED) && !queueSendIM.empty())
+       DeliveryStatus delivery_status;
+       while(((delivery_status = driver->getIMDeliveryStatus()) == EMPTY || delivery_status == FAILED) && !queueSendIM.empty())
        {
            // Check free transmission buffer and instant message size.
            checkFreeBuffer(driver->getStringOfIM(queueSendIM.front()), acoustic_connection);
@@ -224,6 +225,8 @@ void Task::processIO()
         std::cout << info <<"\""<< response_info.buffer << "\"" << std::endl;
         RTT::log(RTT::Error) << info <<"\""<< response_info.buffer << "\"" << std::endl;
     }
+    else
+        std::cout << "processIO "<< response_info.response << " "<< UsblParser::printBuffer(response_info.buffer) << std::endl;
 }
 
 void Task::resetCounters(bool drop_counter, bool overflow_counter)

@@ -154,6 +154,8 @@ void Task::updateHook()
 
            // Send latest message in queue.
            driver->sendInstantMessage(queueSendIM.front());
+           // Last send Instant Message
+           last_send_IM = queueSendIM.front();
            // If no delivery report is requested, pop message from queue.
            if(!queueSendIM.front().deliveryReport)
                queueSendIM.pop();
@@ -222,11 +224,9 @@ void Task::processIO()
     if((response_info = driver->readResponse()).response != NO_RESPONSE)
     {
         std::string info = "Usbl_evologics Task.cpp. In processIO, unexpected read a response of a request: ";
-        std::cout << info <<"\""<< response_info.buffer << "\"" << std::endl;
-        RTT::log(RTT::Error) << info <<"\""<< response_info.buffer << "\"" << std::endl;
+        std::cout << info <<"\""<< UsblParser::printBuffer(response_info.buffer) << "\"" << std::endl;
+        RTT::log(RTT::Error) << info <<"\""<< UsblParser::printBuffer(response_info.buffer) << "\"" << std::endl;
     }
-    else
-        std::cout << "processIO "<< response_info.response << " "<< UsblParser::printBuffer(response_info.buffer) << std::endl;
 }
 
 void Task::resetCounters(bool drop_counter, bool overflow_counter)
@@ -287,7 +287,7 @@ void Task::processNotification(NotificationInfo const &notification)
             if(!queueSendIM.empty())
                 error_msg << "Usbl_evologics Task.cpp. Device did not receive a delivered acknowledgment for Instant Message: \"" << UsblParser::printBuffer(queueSendIM.front().buffer) << "\". Usbl will make \"" << current_settings.imRetry << "\" retries to send message";
             else
-                error_msg << "Usbl_evologics Task.cpp. Device did not receive a delivered acknowledgment for Instant Message. But I don't know from which message is this notification. Maybe from an old one.";
+                error_msg << "Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for Instant Message. But I don't know from which message is this notification. Maybe from an old one, like: \""<< UsblParser::printBuffer(last_send_IM.buffer) <<"\"";
             std::cout << error_msg.str() << std::endl;
             RTT::log(RTT::Error) << error_msg.str() << std::endl;
         }
@@ -300,9 +300,10 @@ void Task::processNotification(NotificationInfo const &notification)
         }
         else
         {
-            std::string error_msg = "Usbl_evologics Task.cpp. Device receive a delivered acknowledgment for Instant Message. But I don't know from which message is this notification. Maybe from an old one.";
-            std::cout << error_msg << std::endl;
-            RTT::log(RTT::Error) << error_msg << std::endl;
+            message_status.sendIm = last_send_IM;
+            std::string error_msg = "Usbl_evologics Task.cpp. Device receive a delivered acknowledgment for Instant Message. But I don't know from which message is this notification. Maybe from an old one, like:";
+            std::cout << error_msg << "\""<< UsblParser::printBuffer(last_send_IM.buffer) <<"\"" <<std::endl;
+            RTT::log(RTT::Error) << error_msg << "\""<< UsblParser::printBuffer(last_send_IM.buffer) <<"\"" <<std::endl;
         }
         message_status.time = base::Time::now();
         _message_status.write(message_status);
@@ -312,9 +313,9 @@ void Task::processNotification(NotificationInfo const &notification)
     {
         std::stringstream error_msg;
         if(!queueSendIM.empty())
-            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message: \"" << UsblParser::printBuffer(send_IM.buffer) << "\". Be sure to wait delivery of last IM.";
+            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message: \"" << UsblParser::printBuffer(queueSendIM.front().buffer) << "\". Be sure to wait delivery of last IM.";
         else
-            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message. But I don't know from which message is this notification. Maybe from an old one, or one that doesn't require notification.";
+            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message. But I don't know from which message is this notification. Maybe from an old one, like: \""<< UsblParser::printBuffer(last_send_IM.buffer) <<"\"" <<", or one that doesn't require notification.";
         std::cout << error_msg.str() << std::endl;
         RTT::log(RTT::Error) << error_msg.str() << std::endl;
         return ;

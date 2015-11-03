@@ -34,7 +34,7 @@ namespace usbl_evologics {
 	    std::queue<SendIM> queueSendIM;
 	    // Arbitrarily defining a max size for queueSendIM.
 	    int MAX_QUEUE_MSG_SIZE = 50;
-	    SendIM send_IM;
+	    SendIM last_send_IM;
 	    // Variable that control the sending of new instant message.
 	    bool IM_notification_ack;
 

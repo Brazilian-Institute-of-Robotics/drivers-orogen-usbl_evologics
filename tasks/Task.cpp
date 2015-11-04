@@ -131,12 +131,15 @@ void Task::updateHook()
    {
        // Check size of Message. It can't be bigger than MAX_MSG_SIZE, according device's manual.
        if(send_IM.buffer.size() > MAX_MSG_SIZE)
-           RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Instant Message \""<< UsblParser::printBuffer(queueSendIM.front().buffer) << "\" is longer than MAX_MSG_SIZE of \"" << MAX_MSG_SIZE << "\" bytes. It will not be sent to remote device. " << std::endl;
+           RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Instant Message \""<< UsblParser::printBuffer(send_IM.buffer) << "\" is longer than MAX_MSG_SIZE of \"" << MAX_MSG_SIZE << "\" bytes. It will not be sent to remote device. " << std::endl;
        // Check buffer size.
        else if(queueSendIM.size() > MAX_QUEUE_MSG_SIZE)
            RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Queue of Instant Message has passed it's maximum size of \""<< MAX_QUEUE_MSG_SIZE << "\" and will not be queued. Reduce the rate of sending message." << std::endl;
        else
+       {
+           std::cout << "Message to be sent and size:" << send_IM.buffer.size() <<". " << UsblParser::printBuffer(send_IM.buffer) <<std::endl;
            queueSendIM.push(send_IM);
+       }
    }
 
    // Get acoustic connection status
@@ -151,7 +154,7 @@ void Task::updateHook()
        {
            // Check free transmission buffer and instant message size.
            checkFreeBuffer(driver->getStringOfIM(queueSendIM.front()), acoustic_connection);
-
+           std::cout << "Message send to device with size: "<< queueSendIM.front().buffer.size() << ". "<< UsblParser::printBuffer(queueSendIM.front().buffer) << std::endl;
            // Send latest message in queue.
            driver->sendInstantMessage(queueSendIM.front());
            // Last send Instant Message

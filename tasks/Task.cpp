@@ -158,7 +158,10 @@ void Task::updateHook()
            last_send_IM = queueSendIM.front();
            // If no delivery report is requested, pop message from queue.
            if(!queueSendIM.front().deliveryReport)
+           {
+               std::cout << "usbl driver. Pop message with delivery report = false" << std::endl;
                queueSendIM.pop();
+           }
        }
 
        // Transmit raw_data
@@ -274,6 +277,7 @@ void Task::processNotification(NotificationInfo const &notification)
 {
     if(notification.notification == RECVIM)
     {
+        std::cout << " size of received instant Message "<< notification.buffer.size() << " .Buffer: " << UsblParser::printBuffer(notification.buffer) << std::endl;
         _message_output.write(driver->receiveInstantMessage(notification.buffer));
         return ;
     }
@@ -285,7 +289,7 @@ void Task::processNotification(NotificationInfo const &notification)
             message_status.status = FAILED;
             std::stringstream error_msg;
             if(!queueSendIM.empty())
-                error_msg << "Usbl_evologics Task.cpp. Device did not receive a delivered acknowledgment for Instant Message: \"" << UsblParser::printBuffer(queueSendIM.front().buffer) << "\". Usbl will make \"" << current_settings.imRetry << "\" retries to send message";
+                error_msg << "Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for Instant Message: \"" << UsblParser::printBuffer(queueSendIM.front().buffer) << "\". Usbl will make \"" << current_settings.imRetry << "\" retries to send message";
             else
                 error_msg << "Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for Instant Message. But I don't know from which message is this notification. Maybe from an old one, like: \""<< UsblParser::printBuffer(last_send_IM.buffer) <<"\"";
             std::cout << error_msg.str() << std::endl;

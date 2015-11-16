@@ -33,7 +33,6 @@ bool UsblDock::configureHook()
     {
         if(_io_port.get().find("tcp") == std::string::npos)
         {
-            std::cout << "Usbl_evologics UsblDock.cpp. WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
             RTT::log(RTT::Error) << "Usbl_evologics UsblDock.cpp. WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
             exception(WRONG_INTERFACE);
             return false;
@@ -78,12 +77,11 @@ void UsblDock::processParticularNotification(NotificationInfo const &notificatio
     else if(notification.notification == USBLANGLE)
     {
         std::string info = "Usbl_evologics UsblDock.cpp. Device is not able to compute exact position of remote device. Instead got it's direction: ";
-        std::cout << info << "\"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
         RTT::log(RTT::Error) << info << "\"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+        return ;
     }
     else
     {
-        std::cout << "Usbl_evologics UsblDock.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
         RTT::log(RTT::Error) << "Usbl_evologics UsblDock.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
         return ;
     }

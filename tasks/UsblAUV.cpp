@@ -33,7 +33,6 @@ bool UsblAUV::configureHook()
     {
         if(_io_port.get().find("serial") == std::string::npos)
         {
-            std::cout << "Usbl_evologics UsblAUV.cpp. WRONG INTERFACE, define serial connection in _io_port" << std::endl;
             RTT::log(RTT::Error) << "Usbl_evologics UsblAUV.cpp. WRONG INTERFACE, define serial connection in _io_port" << std::endl;
             exception(WRONG_INTERFACE);
             return false;

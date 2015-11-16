@@ -77,12 +77,21 @@ bool Task::configureHook()
     // Get parameters.
     DeviceSettings desired_settings = _desired_device_settings.get();
     current_settings = getDeviceSettings();
+    RTT::log(RTT::Info) << "USBL's initial settings"<< endl << getStringOfSettings(current_settings) << endl;
+
+    // TODO need check. Arbitrary set the wait time for 5 seconds.
+    timeout_delivery_report = base::Time::fromSeconds(5);
+    //Set counter
+    im_retries_counter = current_settings.imRetry;
+    old_message_report = true;
+
     // Update parameters.
     if(_change_parameters.get())
     {
         //TODO need validation
         driver->updateDeviceParameters(desired_settings, current_settings);
         current_settings = desired_settings;
+        RTT::log(RTT::Info) << "USBL's updated settings"<< endl << getStringOfSettings(current_settings) << endl;
     }
 
     // Reset drop & overflow counter if desired.
@@ -92,8 +101,9 @@ bool Task::configureHook()
     VersionNumbers device_info = driver->getFirmwareInformation();
     if(device_info.firmwareVersion.find("1.7") == std::string::npos)
         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Component was developed for firmware version \"1.7\" and actual version is: \""<< device_info.firmwareVersion <<"\". Be aware of eventual incompatibility." << std::endl;
-    RTT::log(RTT::Info) << "USBL's firmware information: Firmware version: \""<< device_info.firmwareVersion <<"\"; Physical and Data-Link layer protocol: \""<<
-            device_info.accousticVersion <<"\"; Manufacturer: \""<< device_info.manufacturer << "\"" << std::endl;
+    RTT::log(RTT::Info) << "USBL's firmware information. Firmware version: "<< device_info.firmwareVersion
+            <<"Physical and Data-Link layer protocol: "<< device_info.accousticVersion
+            << "Manufacturer: " << device_info.manufacturer << endl;
 
     return true;
 }
@@ -103,6 +113,8 @@ bool Task::startHook()
         return false;
 
     lastStatus = base::Time::now();
+
+    cout << "USBL working" << endl;
 
     return true;
 }
@@ -119,10 +131,14 @@ void Task::updateHook()
        _acoustic_channel.write(driver->getAcousticChannelparameters());
        MessageStatus message_status;
        message_status.status = driver->getIMDeliveryStatus();
-       if(message_status.status != EMPTY && !queueSendIM.empty())
-           message_status.sendIm = queueSendIM.front();
+       if(message_status.status != EMPTY)
+           message_status.sendIm = last_send_IM;
        message_status.time = base::Time::now();
        _message_status.write(message_status);
+
+       // Check for the last delivery report.
+       if(base::Time::now() - last_delivery_report > timeout_delivery_report && current_settings.imRetry != im_retries_counter)
+           RTT::log(RTT::Error) << "Timeout while wait for a delivery report." << std::endl;
    }
 
    SendIM send_IM;
@@ -136,10 +152,7 @@ void Task::updateHook()
        else if(queueSendIM.size() > MAX_QUEUE_MSG_SIZE)
            RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Queue of Instant Message has passed it's maximum size of \""<< MAX_QUEUE_MSG_SIZE << "\" and will not be queued. Reduce the rate of sending message." << std::endl;
        else
-       {
-           std::cout << "Message to be sent and size:" << send_IM.buffer.size() <<". " << UsblParser::printBuffer(send_IM.buffer) <<std::endl;
            queueSendIM.push(send_IM);
-       }
    }
 
    // Get acoustic connection status
@@ -150,21 +163,18 @@ void Task::updateHook()
    {
        // Only send a new Instant Message if there is no other message been transmitted or if device doesn't wait for report of previously message.
        DeliveryStatus delivery_status;
-       while(((delivery_status = driver->getIMDeliveryStatus()) == EMPTY || delivery_status == FAILED) && !queueSendIM.empty())
+       while(((delivery_status = driver->getIMDeliveryStatus()) == EMPTY || delivery_status == FAILED) && !queueSendIM.empty() && im_retries_counter == current_settings.imRetry)
        {
            // Check free transmission buffer and instant message size.
            checkFreeBuffer(driver->getStringOfIM(queueSendIM.front()), acoustic_connection);
-           std::cout << "Message send to device with size: "<< queueSendIM.front().buffer.size() << ". "<< UsblParser::printBuffer(queueSendIM.front().buffer) << std::endl;
+
            // Send latest message in queue.
            driver->sendInstantMessage(queueSendIM.front());
            // Last send Instant Message
            last_send_IM = queueSendIM.front();
            // If no delivery report is requested, pop message from queue.
            if(!queueSendIM.front().deliveryReport)
-           {
-               std::cout << "usbl driver. Pop message with delivery report = false" << std::endl;
                queueSendIM.pop();
-           }
        }
 
        // Transmit raw_data
@@ -199,10 +209,10 @@ void Task::updateHook()
    // An internal error has occurred on device. Manual says to reset the device.
    if(acoustic_connection.status == OFFLINE_ALARM)
    {
-       std::cout << "Usbl_evologics Task.cpp. Device Internal Error. DEVICE_INTERNAL_ERROR. RESET DEVICE" << std::endl;
-       RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << std::endl;
+       std::string error_msg = "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE";
+       RTT::log(RTT::Error) << error_msg << std::endl;
        exception(DEVICE_INTERNAL_ERROR);
-       throw;
+       throw std::runtime_error(error_msg);
    }
 
 }
@@ -221,16 +231,17 @@ void Task::cleanupHook()
     //Make sure to set the device to its default operational mode, DATA.
     if(driver->getMode() == COMMAND)
         driver->switchToDataMode();
-
+    // Clean queueSendIM
+    while(!queueSendIM.empty())
+        queueSendIM.pop();
 }
 void Task::processIO()
 {
-    // TODO enqueue RawData and Notification
+    // Enqueue RawData and Notification
     ResponseInfo response_info;
     if((response_info = driver->readResponse()).response != NO_RESPONSE)
     {
         std::string info = "Usbl_evologics Task.cpp. In processIO, unexpected read a response of a request: ";
-        std::cout << info <<"\""<< UsblParser::printBuffer(response_info.buffer) << "\"" << std::endl;
         RTT::log(RTT::Error) << info <<"\""<< UsblParser::printBuffer(response_info.buffer) << "\"" << std::endl;
     }
 }
@@ -269,10 +280,9 @@ void Task::filterRawData( std::string const & raw_data_in)
     if (raw_data_in.find("+++") != string::npos)
     {
         std::string error_msg = "Usbl_evologics Task.cpp. There is the malicious string \"+++\" in raw_data_input. DO NOT use it as it could be interpreted as a command by device.";
-        std::cout << error_msg << std::endl;
         RTT::log(RTT::Error) << error_msg << std::endl;
         exception(MALICIOUS_SEQUENCE_IN_RAW_DATA);
-        throw;
+        throw std::runtime_error(error_msg);
     }
 }
 
@@ -280,40 +290,12 @@ void Task::processNotification(NotificationInfo const &notification)
 {
     if(notification.notification == RECVIM)
     {
-        std::cout << " size of received instant Message "<< notification.buffer.size() << " .Buffer: " << UsblParser::printBuffer(notification.buffer) << std::endl;
         _message_output.write(driver->receiveInstantMessage(notification.buffer));
         return ;
     }
     else if(notification.notification == DELIVERY_REPORT)
     {
-        MessageStatus message_status;
-        if(!driver->getIMDeliveryReport(notification.buffer))
-        {
-            message_status.status = FAILED;
-            std::stringstream error_msg;
-            if(!queueSendIM.empty())
-                error_msg << "Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for Instant Message: \"" << UsblParser::printBuffer(queueSendIM.front().buffer) << "\". Usbl will make \"" << current_settings.imRetry << "\" retries to send message";
-            else
-                error_msg << "Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for Instant Message. But I don't know from which message is this notification. Maybe from an old one, like: \""<< UsblParser::printBuffer(last_send_IM.buffer) <<"\"";
-            std::cout << error_msg.str() << std::endl;
-            RTT::log(RTT::Error) << error_msg.str() << std::endl;
-        }
-        else
-            message_status.status = DELIVERED;
-        if(!queueSendIM.empty())
-        {
-            message_status.sendIm = queueSendIM.front();
-            queueSendIM.pop();
-        }
-        else
-        {
-            message_status.sendIm = last_send_IM;
-            std::string error_msg = "Usbl_evologics Task.cpp. Device receive a delivered acknowledgment for Instant Message. But I don't know from which message is this notification. Maybe from an old one, like:";
-            std::cout << error_msg << "\""<< UsblParser::printBuffer(last_send_IM.buffer) <<"\"" <<std::endl;
-            RTT::log(RTT::Error) << error_msg << "\""<< UsblParser::printBuffer(last_send_IM.buffer) <<"\"" <<std::endl;
-        }
-        message_status.time = base::Time::now();
-        _message_status.write(message_status);
+        _message_status.write(processDeliveryReportNotification(notification));
         return ;
     }
     else if(notification.notification == CANCELED_IM)
@@ -323,7 +305,6 @@ void Task::processNotification(NotificationInfo const &notification)
             error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message: \"" << UsblParser::printBuffer(queueSendIM.front().buffer) << "\". Be sure to wait delivery of last IM.";
         else
             error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message. But I don't know from which message is this notification. Maybe from an old one, like: \""<< UsblParser::printBuffer(last_send_IM.buffer) <<"\"" <<", or one that doesn't require notification.";
-        std::cout << error_msg.str() << std::endl;
         RTT::log(RTT::Error) << error_msg.str() << std::endl;
         return ;
     }
@@ -333,6 +314,74 @@ void Task::processNotification(NotificationInfo const &notification)
 
 void Task::processParticularNotification(NotificationInfo const &notification)
 {
-    std::cout << "Usbl_evologics Task.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
     RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+}
+
+MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &notification)
+{
+    if(notification.notification != DELIVERY_REPORT)
+        throw runtime_error("Usbl_evologics Task.cpp. processDeliveryReportNotification did not receive a delivery report.");
+
+    // Pop Message since first delivery report.
+    if(!queueSendIM.empty() && im_retries_counter == current_settings.imRetry)
+    {
+        queueSendIM.pop();
+        old_message_report = false;
+    }
+    last_delivery_report = base::Time::now();
+
+    MessageStatus message_status;
+    if(!driver->getIMDeliveryReport(notification.buffer))
+    {
+        message_status.status = FAILED;
+        std::stringstream retries_count;
+        retries_count << im_retries_counter;
+        std::stringstream error_msg;
+        error_msg << "Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for Instant Message: \""
+                << UsblParser::printBuffer(last_send_IM.buffer) << "\". Usbl will make \"" << ((current_settings.imRetry < 255) ? retries_count.str():"Indefinitely")
+                << "\" retries to send message";
+
+        // Got a Failed report from a old message
+        if(old_message_report)
+            error_msg.str(std::string("Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for an old instant Instant Message"));
+
+        // Decrease counter till it reach 0.
+        // In case device does a finite amount of retries
+        // In case counter hasn't reached zero
+        // In case it is a report from an actual message (not an old one).
+        else if(current_settings.imRetry > 0 && current_settings.imRetry < 255
+                && im_retries_counter > 0)
+            im_retries_counter--;
+        // Reset counter in case it reach it's limit
+        else if(current_settings.imRetry && im_retries_counter <= 0)
+            im_retries_counter = current_settings.imRetry;
+
+        RTT::log(RTT::Error) << error_msg.str() << std::endl;
+    }
+    else
+    {
+        message_status.status = DELIVERED;
+        // Reset counter
+        if (im_retries_counter != current_settings.imRetry)
+            im_retries_counter = current_settings.imRetry;
+    }
+
+    message_status.sendIm = last_send_IM;
+    message_status.time = base::Time::now();
+    return message_status;
+}
+
+std::string Task::getStringOfSettings(DeviceSettings settings)
+{
+    std::stringstream text;
+    text << "Source Level: " << settings.sourceLevel << endl << "Source Level Control: " << (settings.sourceLevelControl?"true":"false") << endl
+            << "Low Gain: " << (settings.lowGain?"true":"false") << endl << "Carrier Waveform ID: " << settings.carrierWaveformId << endl
+            << "Local Address: " << settings.localAddress << endl << "Remote Address: " << settings.remoteAddress << endl
+            << "Highest Address: " << settings.highestAddress << endl << "Cluster Size: " << settings.clusterSize << endl
+            << "Packet Time [ms]: " << settings.packetTime << endl << "Retry Count: " << settings.retryCount << endl
+            << "Retry Timeout [ms]: " << settings.retryTimeout << endl << "Idle Timeout [s]: " << settings.idleTimeout << endl
+            << "Sound Speed [m/s]: " << settings.speedSound << endl << "Instant Message Retry: " << settings.imRetry << endl
+            << "Promiscuous Mode: " << (settings.promiscuosMode?"true":"false") << endl << "Wake Up Active Time [s]: " << settings.wuActiveTime << endl
+            << "Wake Up Period [s]: " << settings.wuPeriod << endl << "Wake Up Hold Time [s]: " << settings.wuHoldTimeout << endl;
+    return text.str();
 }

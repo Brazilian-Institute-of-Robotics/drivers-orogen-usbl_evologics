@@ -35,8 +35,13 @@ namespace usbl_evologics {
 	    // Arbitrarily defining a max size for queueSendIM.
 	    int MAX_QUEUE_MSG_SIZE = 50;
 	    SendIM last_send_IM;
-	    // Variable that control the sending of new instant message.
-	    bool IM_notification_ack;
+	    // Retries counter of instant message.
+	    int im_retries_counter;
+	    base::Time last_delivery_report;
+	    base::Time timeout_delivery_report;
+
+	    // Define if a report is from a old message (report with empty sendIM queue)
+	    bool old_message_report;
 
 	    AcousticConnection acoustic_connection;
 
@@ -204,6 +209,22 @@ namespace usbl_evologics {
          *
          */
         virtual void processParticularNotification(NotificationInfo const &notification);
+
+        /** Process a Report Notification
+         *
+         * Check if Instant Message was successfully delivered or if its failed.
+         * In case of failure, act according number of retries set in device.
+         * @param notification
+         * @return MessageStatus to be output.
+         */
+        MessageStatus processDeliveryReportNotification(NotificationInfo const &notification);
+
+        /** Get settings in string for log purpose
+         *
+         * @param settings of device
+         * @return string with setting information
+         */
+        std::string getStringOfSettings(DeviceSettings settings);
     };
 }
 

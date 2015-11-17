@@ -8,7 +8,10 @@ Orocos.run 'usbl_evologics::UsblDock' => 'usbldock' do
 
    #USBL Config
     usbl.io_port = "tcp://192.168.0.191:9200"
-
+#    usbl.reset_drop_counter = false
+#    usbl.reset_overflow_counter = false    
+        
+        
     usbl.configure
     usbl.start
 

@@ -138,7 +138,11 @@ void Task::updateHook()
 
        // Check for the last delivery report.
        if(base::Time::now() - last_delivery_report > timeout_delivery_report && current_settings.imRetry != im_retries_counter)
+       {
            RTT::log(RTT::Error) << "Timeout while wait for a delivery report." << std::endl;
+           exception(NO_MESSAGE_DELIVERED_REPORT);
+           return;
+       }
    }
 
    SendIM send_IM;

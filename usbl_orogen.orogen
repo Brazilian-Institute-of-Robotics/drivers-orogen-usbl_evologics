@@ -76,7 +76,7 @@ task_context "Task" do
    operation('restoreFactorySettings')
   
 
-   exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA
+   exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA, :NO_MESSAGE_DELIVERED_REPORT
 
 end
 

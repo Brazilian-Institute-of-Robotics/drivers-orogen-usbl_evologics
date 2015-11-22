@@ -75,8 +75,11 @@ task_context "Task" do
    # Restore Factory Settings.
    operation('restoreFactorySettings')
   
-
-   exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA
+   # MISSING_DELIVERY_REPORT: If usbl is not able to deliver a message, it's returns a FAILED delivery report
+   #  and will automaticly retry to deliver it "device_settings.imRetry" times.
+   #  The driver will expect the same amount of FAILED delivery report if not receive a DELIREVED report before that.
+   #  If this doesn't happen, driver get in exception state.
+   exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA, :MISSING_DELIVERY_REPORT
 
 end
 

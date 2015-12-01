@@ -39,6 +39,8 @@ bool UsblAUV::configureHook()
         }
     }
 
+    temp_source_level = IN_AIR;
+
     return true;
 }
 bool UsblAUV::startHook()
@@ -50,6 +52,25 @@ bool UsblAUV::startHook()
 void UsblAUV::updateHook()
 {
     UsblAUVBase::updateHook();
+
+    base::samples::RigidBodyState pose_samples;
+    while(_position_samples.read(pose_samples) == RTT::NewData)
+    {
+        // In case the vehicle is near the surface and the sourceLevel is not set to be IN_AIR, it set this parameter to IN_AIR while auv is near the surface.
+        if(pose_samples.position[2] > -0.5 && current_settings.sourceLevel != IN_AIR)
+        {
+            temp_source_level = current_settings.sourceLevel;
+            current_settings.sourceLevel = IN_AIR;
+            driver->setSourceLevel(current_settings.sourceLevel);
+        }
+        // Just to avoid a oscillatory movement around -0.5, set to a little bit deeper to set back the source level
+        else if(pose_samples.position[2] < -1.0 && temp_source_level != IN_AIR)
+        {
+            current_settings.sourceLevel = temp_source_level;
+            temp_source_level = IN_AIR;
+            driver->setSourceLevel(current_settings.sourceLevel);
+        }
+    }
 }
 void UsblAUV::errorHook()
 {

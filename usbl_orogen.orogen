@@ -96,12 +96,18 @@ task_context "UsblDock" do
    # AUV's pose in USBL frame. Present with Ethernet Connection
    output_port "position_samples", "/base/samples/RigidBodyState"
 
+   # In case the USBL is not able to compute the pose of the remote device, it can provide the direction toward it.
+   output_port "direction_samples", "/usbl_evologics/Direction"
+
 end
 
 task_context "UsblAUV" do
    subclasses "Task"
    needs_configuration
    
+   # Monitoring the actual depth of the vehicle, so the usbl doesn't use high power signal outside the water when it's on the surface.
+   input_port "position_samples", "/base/samples/RigidBodyState"
+
    # Serial Connection  
    
 end

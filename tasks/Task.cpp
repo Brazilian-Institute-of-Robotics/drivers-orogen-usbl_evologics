@@ -81,9 +81,15 @@ bool Task::configureHook()
 
     // TODO need check. Arbitrary set the wait time for 5 seconds.
     timeout_delivery_report = base::Time::fromSeconds(5);
-    //Set counter
+    //Set retries counter
     im_retries_counter = current_settings.imRetry;
     old_message_report = true;
+    //Initialize Instant Messages counters
+    message_status.messageDelivered = 0;
+    message_status.messageFailed = 0;
+    message_status.messageReceived = 0;
+    message_status.messageSent = 0;
+
 
     // Update parameters.
     if(_change_parameters.get())
@@ -93,6 +99,10 @@ bool Task::configureHook()
         current_settings = desired_settings;
         RTT::log(RTT::Info) << "USBL's updated settings"<< endl << getStringOfSettings(current_settings) << endl;
     }
+    // Hack to get the actual parameters, and in case it's need to update one or other parameters, the user is not required to know how to set the whole configuration.
+    else
+        _desired_device_settings.set(current_settings);
+
 
     // Reset drop & overflow counter if desired.
     resetCounters(_reset_drop_counter.get(), _reset_overflow_counter.get());
@@ -129,7 +139,7 @@ void Task::updateHook()
 
        _acoustic_connection.write(driver->getConnectionStatus());
        _acoustic_channel.write(driver->getAcousticChannelparameters());
-       MessageStatus message_status;
+
        message_status.status = driver->getIMDeliveryStatus();
        if(message_status.status != EMPTY)
            message_status.sendIm = last_send_IM;
@@ -174,6 +184,8 @@ void Task::updateHook()
 
            // Send latest message in queue.
            driver->sendInstantMessage(queueSendIM.front());
+           //Add counter
+           message_status.messageSent++;
            // Last send Instant Message
            last_send_IM = queueSendIM.front();
            // If no delivery report is requested, pop message from queue.
@@ -235,6 +247,12 @@ void Task::cleanupHook()
     //Make sure to set the device to its default operational mode, DATA.
     if(driver->getMode() == COMMAND)
         driver->switchToDataMode();
+    //TODO set back device to IN_AIR source level to avoid damage device.
+    if(current_settings.sourceLevel != IN_AIR)
+    {
+        current_settings.sourceLevel = IN_AIR;
+        driver->setSourceLevel(current_settings.sourceLevel);
+    }
     // Clean queueSendIM
     while(!queueSendIM.empty())
         queueSendIM.pop();
@@ -295,6 +313,7 @@ void Task::processNotification(NotificationInfo const &notification)
     if(notification.notification == RECVIM)
     {
         _message_output.write(driver->receiveInstantMessage(notification.buffer));
+        message_status.messageReceived++;
         return ;
     }
     else if(notification.notification == DELIVERY_REPORT)
@@ -334,7 +353,6 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
     }
     last_delivery_report = base::Time::now();
 
-    MessageStatus message_status;
     if(!driver->getIMDeliveryReport(notification.buffer))
     {
         message_status.status = FAILED;
@@ -358,13 +376,18 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
             im_retries_counter--;
         // Reset counter in case it reach it's limit
         else if(current_settings.imRetry && im_retries_counter <= 0)
+        {
             im_retries_counter = current_settings.imRetry;
+            // Add counter when device won't make any more retry and message is definitely FAILED
+            message_status.messageFailed++;
+        }
 
         RTT::log(RTT::Error) << error_msg.str() << std::endl;
     }
     else
     {
         message_status.status = DELIVERED;
+        message_status.messageDelivered++;
         // Reset counter
         if (im_retries_counter != current_settings.imRetry)
             im_retries_counter = current_settings.imRetry;
@@ -387,5 +410,8 @@ std::string Task::getStringOfSettings(DeviceSettings settings)
             << "Sound Speed [m/s]: " << settings.speedSound << endl << "Instant Message Retry: " << settings.imRetry << endl
             << "Promiscuous Mode: " << (settings.promiscuosMode?"true":"false") << endl << "Wake Up Active Time [s]: " << settings.wuActiveTime << endl
             << "Wake Up Period [s]: " << settings.wuPeriod << endl << "Wake Up Hold Time [s]: " << settings.wuHoldTimeout << endl;
+    for(int i=0; i < settings.poolSize.size(); i++)
+        text << "Pool size [" << i <<"]: " << settings.poolSize[i];
+
     return text.str();
 }

@@ -27,7 +27,12 @@ namespace usbl_evologics {
 	friend class UsblAUVBase;
     protected:
 
-
+	    // Defines Sound Pressure Level (SPL)
+	    // 0: Maximum SPL. To be set carefully
+	    // 1: Maximum - 6dB
+	    // 2: Maximum - 12dB
+	    // 3: Maximum - 20dB. Test IN AIR
+	    SourceLevel temp_source_level;
 
     public:
         /** TaskContext constructor for UsblAUV

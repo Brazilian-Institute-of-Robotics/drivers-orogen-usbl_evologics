@@ -40,6 +40,8 @@ namespace usbl_evologics {
 	    base::Time last_delivery_report;
 	    base::Time timeout_delivery_report;
 
+	    MessageStatus message_status;
+
 	    // Define if a report is from a old message (report with empty sendIM queue)
 	    bool old_message_report;
 

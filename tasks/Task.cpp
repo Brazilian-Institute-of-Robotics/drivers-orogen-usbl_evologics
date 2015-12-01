@@ -9,12 +9,26 @@ Task::Task(std::string const& name)
     : TaskBase(name)
 {
     _status_period.set(base::Time::fromSeconds(1));
+
+    old_message_report = true;
+    //Initialize Instant Messages counters
+    message_status.messageDelivered = 0;
+    message_status.messageFailed = 0;
+    message_status.messageReceived = 0;
+    message_status.messageSent = 0;
 }
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     : TaskBase(name, engine)
 {
     _status_period.set(base::Time::fromSeconds(1));
+
+    old_message_report = true;
+    //Initialize Instant Messages counters
+    message_status.messageDelivered = 0;
+    message_status.messageFailed = 0;
+    message_status.messageReceived = 0;
+    message_status.messageSent = 0;
 }
 
 Task::~Task()
@@ -83,12 +97,7 @@ bool Task::configureHook()
     timeout_delivery_report = base::Time::fromSeconds(5);
     //Set retries counter
     im_retries_counter = current_settings.imRetry;
-    old_message_report = true;
-    //Initialize Instant Messages counters
-    message_status.messageDelivered = 0;
-    message_status.messageFailed = 0;
-    message_status.messageReceived = 0;
-    message_status.messageSent = 0;
+
 
 
     // Update parameters.
@@ -177,7 +186,8 @@ void Task::updateHook()
    {
        // Only send a new Instant Message if there is no other message been transmitted or if device doesn't wait for report of previously message.
        DeliveryStatus delivery_status;
-       while(((delivery_status = driver->getIMDeliveryStatus()) == EMPTY || delivery_status == FAILED) && !queueSendIM.empty() && im_retries_counter == current_settings.imRetry)
+       while(((delivery_status = driver->getIMDeliveryStatus()) == EMPTY || delivery_status == FAILED)
+               && !queueSendIM.empty() && im_retries_counter == current_settings.imRetry)
        {
            // Check free transmission buffer and instant message size.
            checkFreeBuffer(driver->getStringOfIM(queueSendIM.front()), acoustic_connection);
@@ -253,6 +263,7 @@ void Task::cleanupHook()
         current_settings.sourceLevel = IN_AIR;
         driver->setSourceLevel(current_settings.sourceLevel);
     }
+
     // Clean queueSendIM
     while(!queueSendIM.empty())
         queueSendIM.pop();

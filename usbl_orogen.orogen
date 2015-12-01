@@ -26,7 +26,7 @@ task_context "Task" do
    # COMMAND, raw_data can not be transmitted over acoustic link, remaining exclusively for messages.
    property "mode", "/usbl_evologics/OperationMode", :DATA   
    # Desired device settings.
-   attribute "desired_device_settings", "/usbl_evologics/DeviceSettings" 
+   property "desired_device_settings", "/usbl_evologics/DeviceSettings" 
    # Period for status update. Defaults to one second
    property "status_period", "base/Time"
    

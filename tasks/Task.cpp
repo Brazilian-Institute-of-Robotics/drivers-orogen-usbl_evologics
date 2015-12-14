@@ -10,7 +10,10 @@ Task::Task(std::string const& name)
 {
     _status_period.set(base::Time::fromSeconds(1));
 
-    old_message_report = true;
+    // Defines the moment of sending new instant message
+    im_wait_ack = false;
+    // TODO need check. Arbitrary set the wait time for 10 seconds.
+    timeout_delivery_report = base::Time::fromSeconds(10);
     //Initialize Instant Messages counters
     message_status.messageDelivered = 0;
     message_status.messageFailed = 0;
@@ -23,7 +26,10 @@ Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
 {
     _status_period.set(base::Time::fromSeconds(1));
 
-    old_message_report = true;
+    // Defines the moment of sending new instant message
+    im_wait_ack = false;
+    // TODO need check. Arbitrary set the wait time for 10 seconds.
+    timeout_delivery_report = base::Time::fromSeconds(10);
     //Initialize Instant Messages counters
     message_status.messageDelivered = 0;
     message_status.messageFailed = 0;
@@ -93,13 +99,6 @@ bool Task::configureHook()
     current_settings = getDeviceSettings();
     RTT::log(RTT::Info) << "USBL's initial settings"<< endl << getStringOfSettings(current_settings) << endl;
 
-    // TODO need check. Arbitrary set the wait time for 5 seconds.
-    timeout_delivery_report = base::Time::fromSeconds(5);
-    //Set retries counter
-    im_retries_counter = current_settings.imRetry;
-
-
-
     // Update parameters.
     if(_change_parameters.get())
     {
@@ -152,11 +151,16 @@ void Task::updateHook()
        message_status.status = driver->getIMDeliveryStatus();
        if(message_status.status != EMPTY)
            message_status.sendIm = last_send_IM;
+       else
+       {
+           SendIM empty_IM;
+           message_status.sendIm = empty_IM;
+       }
        message_status.time = base::Time::now();
        _message_status.write(message_status);
 
        // Check for the last delivery report.
-       if(base::Time::now() - last_delivery_report > timeout_delivery_report && current_settings.imRetry != im_retries_counter)
+       if(base::Time::now() - last_im_sent > timeout_delivery_report && im_wait_ack)
        {
            RTT::log(RTT::Error) << "Timeout while wait for a delivery report." << std::endl;
            exception(MISSING_DELIVERY_REPORT);
@@ -186,8 +190,8 @@ void Task::updateHook()
    {
        // Only send a new Instant Message if there is no other message been transmitted or if device doesn't wait for report of previously message.
        DeliveryStatus delivery_status;
-       while(((delivery_status = driver->getIMDeliveryStatus()) == EMPTY || delivery_status == FAILED)
-               && !queueSendIM.empty() && im_retries_counter == current_settings.imRetry)
+       while(((delivery_status = driver->getIMDeliveryStatus()) != EMPTY || delivery_status == FAILED)
+               && !queueSendIM.empty() && !im_wait_ack)
        {
            // Check free transmission buffer and instant message size.
            checkFreeBuffer(driver->getStringOfIM(queueSendIM.front()), acoustic_connection);
@@ -198,8 +202,14 @@ void Task::updateHook()
            message_status.messageSent++;
            // Last send Instant Message
            last_send_IM = queueSendIM.front();
+           // Disable sending message until get a delivery report. Wait for acknowledgment.
+           if(queueSendIM.front().deliveryReport)
+           {
+               im_wait_ack = true;
+               last_im_sent = base::Time::now();
+           }
            // If no delivery report is requested, pop message from queue.
-           if(!queueSendIM.front().deliveryReport)
+           else
                queueSendIM.pop();
        }
 
@@ -257,10 +267,10 @@ void Task::cleanupHook()
     //Make sure to set the device to its default operational mode, DATA.
     if(driver->getMode() == COMMAND)
         driver->switchToDataMode();
-    //TODO set back device to IN_AIR source level to avoid damage device.
-    if(current_settings.sourceLevel != IN_AIR)
+    //TODO set back device to MINIMAL/IN_AIR source level to avoid damage device.
+    if(current_settings.sourceLevel != MINIMAL)
     {
-        current_settings.sourceLevel = IN_AIR;
+        current_settings.sourceLevel = MINIMAL;
         driver->setSourceLevel(current_settings.sourceLevel);
     }
 
@@ -356,52 +366,31 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
     if(notification.notification != DELIVERY_REPORT)
         throw runtime_error("Usbl_evologics Task.cpp. processDeliveryReportNotification did not receive a delivery report.");
 
-    // Pop Message since first delivery report.
-    if(!queueSendIM.empty() && im_retries_counter == current_settings.imRetry)
+    // Got a report from a old message, while it was not expected.
+    if(!im_wait_ack)
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device received a delivered acknowledgment for an old Instant Message" << std::endl;
+
+    // Pop message from queue and confirm the report receipt.
+    if(!queueSendIM.empty() && im_wait_ack)
     {
         queueSendIM.pop();
-        old_message_report = false;
+        im_wait_ack = false;
     }
-    last_delivery_report = base::Time::now();
 
     if(!driver->getIMDeliveryReport(notification.buffer))
     {
         message_status.status = FAILED;
-        std::stringstream retries_count;
-        retries_count << im_retries_counter;
+        message_status.messageFailed++;
+
         std::stringstream error_msg;
         error_msg << "Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for Instant Message: \""
-                << UsblParser::printBuffer(last_send_IM.buffer) << "\". Usbl will make \"" << ((current_settings.imRetry < 255) ? retries_count.str():"Indefinitely")
-                << "\" retries to send message";
-
-        // Got a Failed report from a old message
-        if(old_message_report)
-            error_msg.str(std::string("Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for an old instant Instant Message"));
-
-        // Decrease counter till it reach 0.
-        // In case device does a finite amount of retries
-        // In case counter hasn't reached zero
-        // In case it is a report from an actual message (not an old one).
-        else if(current_settings.imRetry > 0 && current_settings.imRetry < 255
-                && im_retries_counter > 0)
-            im_retries_counter--;
-        // Reset counter in case it reach it's limit
-        else if(current_settings.imRetry && im_retries_counter <= 0)
-        {
-            im_retries_counter = current_settings.imRetry;
-            // Add counter when device won't make any more retry and message is definitely FAILED
-            message_status.messageFailed++;
-        }
-
+                << UsblParser::printBuffer(last_send_IM.buffer) << "\".";
         RTT::log(RTT::Error) << error_msg.str() << std::endl;
     }
     else
     {
         message_status.status = DELIVERED;
         message_status.messageDelivered++;
-        // Reset counter
-        if (im_retries_counter != current_settings.imRetry)
-            im_retries_counter = current_settings.imRetry;
     }
 
     message_status.sendIm = last_send_IM;

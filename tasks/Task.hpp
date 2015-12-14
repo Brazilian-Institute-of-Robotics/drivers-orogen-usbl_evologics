@@ -35,15 +35,17 @@ namespace usbl_evologics {
 	    // Arbitrarily defining a max size for queueSendIM.
 	    int MAX_QUEUE_MSG_SIZE = 50;
 	    SendIM last_send_IM;
+
+
 	    // Retries counter of instant message.
 	    int im_retries_counter;
-	    base::Time last_delivery_report;
+	    base::Time last_im_sent;
 	    base::Time timeout_delivery_report;
 
 	    MessageStatus message_status;
 
-	    // Define if a report is from a old message (report with empty sendIM queue)
-	    bool old_message_report;
+	    // Manage the moment of sending new messages.
+	    bool im_wait_ack;
 
 	    AcousticConnection acoustic_connection;
 

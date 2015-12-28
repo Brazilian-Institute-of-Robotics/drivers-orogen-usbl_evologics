@@ -85,4 +85,3 @@ void UsblDock::processParticularNotification(NotificationInfo const &notificatio
         return ;
     }
 }
-

@@ -44,6 +44,10 @@ namespace usbl_evologics {
 
 	    MessageStatus message_status;
 
+	    // Raw data counters
+	    long long unsigned int sent_raw_data_counter;
+	    long long unsigned int received_raw_data_counter;
+
 	    // Manage the moment of sending new messages.
 	    bool im_wait_ack;
 
@@ -172,14 +176,6 @@ namespace usbl_evologics {
          */
         DeviceSettings getDeviceSettings(void);
 
-        /** Update parameters on device.
-         *
-         * Compare actual with desired settings before update.
-         * @param desired_setting, parameters that should be applied on device.
-         * @param actual_setting, parameters present in device that will be used for compare.
-         */
-        void updateDeviceParameters(DeviceSettings const &desired_setting, DeviceSettings const &actual_setting);
-
         /** Reset counters if it is the case.
          *
          */
@@ -229,6 +225,29 @@ namespace usbl_evologics {
          * @return string with setting information
          */
         std::string getStringOfSettings(DeviceSettings settings);
+
+        /** Get settings in string for log purpose
+         *
+         * @param settings of device
+         * @param source_level
+         * @param source_level_control
+         * @return string with setting information
+         */
+        std::string getStringOfSettings(DeviceSettings settings, SourceLevel source_level, bool source_level_control);
+
+        /** Dynamically update source level
+         *
+         * @param value, desired SourceLevel
+         */
+        bool setSource_level(SourceLevel value);
+
+        /** Dynamically update source level
+         *
+         * @param value, True: Source level set by source level of remote device during data transmission.
+         *               False: Source level set by local property.
+         */
+        bool setSource_level_control(bool value);
+
     };
 }
 

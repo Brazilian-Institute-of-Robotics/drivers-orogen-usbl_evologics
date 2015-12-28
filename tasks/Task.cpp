@@ -19,6 +19,9 @@ Task::Task(std::string const& name)
     message_status.messageFailed = 0;
     message_status.messageReceived = 0;
     message_status.messageSent = 0;
+    // Initialize raw data counters
+    sent_raw_data_counter = 0;
+    received_raw_data_counter = 0;
 }
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
@@ -35,10 +38,33 @@ Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     message_status.messageFailed = 0;
     message_status.messageReceived = 0;
     message_status.messageSent = 0;
+    // Initialize raw data counters
+    sent_raw_data_counter = 0;
+    received_raw_data_counter = 0;
 }
 
 Task::~Task()
 {
+}
+
+bool Task::setSource_level(SourceLevel value)
+{
+    if(driver->getSourceLevel() != value)
+    {
+        driver->setSourceLevel(value);
+        RTT::log(RTT::Info) << "USBL's source level change to \"" << value << "\"" << endl;
+    }
+ return(usbl_evologics::TaskBase::setSource_level(value));
+}
+
+bool Task::setSource_level_control(bool value)
+{
+    if(driver->getSourceLevelControl() != value)
+    {
+        driver->setSourceLevelControl(value);
+        RTT::log(RTT::Info) << "USBL's source level control change to \"" << (value?"true":"false") << "\"" << endl;
+    }
+ return(usbl_evologics::TaskBase::setSource_level_control(value));
 }
 
 // Reset Device to stored settings and restart it.
@@ -94,10 +120,13 @@ bool Task::configureHook()
     if(driver->getMode() != _mode.get())
         driver->setOperationMode(_mode.get());
 
+    // Initialize source level parameters
+    updateDynamicProperties();
+
     // Get parameters.
     DeviceSettings desired_settings = _desired_device_settings.get();
     current_settings = getDeviceSettings();
-    RTT::log(RTT::Info) << "USBL's initial settings"<< endl << getStringOfSettings(current_settings) << endl;
+    RTT::log(RTT::Info) << "USBL's initial settings"<< endl << getStringOfSettings(current_settings, driver->getSourceLevel(), driver->getSourceLevelControl()) << endl;
 
     // Update parameters.
     if(_change_parameters.get())
@@ -146,7 +175,11 @@ void Task::updateHook()
        lastStatus = base::Time::now();
 
        _acoustic_connection.write(driver->getConnectionStatus());
-       _acoustic_channel.write(driver->getAcousticChannelparameters());
+
+       AcousticChannel acoustic_channel = driver->getAcousticChannelparameters();
+       acoustic_channel.sent_raw_data = sent_raw_data_counter;
+       acoustic_channel.received_raw_data = received_raw_data_counter;
+       _acoustic_channel.write(acoustic_channel);
 
        message_status.status = driver->getIMDeliveryStatus();
        if(message_status.status != EMPTY)
@@ -223,6 +256,7 @@ void Task::updateHook()
            {
                filterRawData(buffer);
                driver->sendRawData(raw_data_input.data);
+               sent_raw_data_counter += raw_data_input.data.size();
            }
            else
                RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device can not send raw_data \""<< raw_data_input.data.data() << "\" in COMMAND mode. Be sure to switch device to DATA mode" << std::endl;
@@ -240,6 +274,7 @@ void Task::updateHook()
        raw_packet_buffer.time = base::Time::now();
        raw_packet_buffer.data = driver->getRawData();
        _raw_data_output.write(raw_packet_buffer);
+       received_raw_data_counter += raw_packet_buffer.data.size();
    }
 
    // An internal error has occurred on device. Manual says to reset the device.
@@ -267,12 +302,12 @@ void Task::cleanupHook()
     //Make sure to set the device to its default operational mode, DATA.
     if(driver->getMode() == COMMAND)
         driver->switchToDataMode();
+
     //TODO set back device to MINIMAL/IN_AIR source level to avoid damage device.
-    if(current_settings.sourceLevel != MINIMAL)
-    {
-        current_settings.sourceLevel = MINIMAL;
-        driver->setSourceLevel(current_settings.sourceLevel);
-    }
+    if(driver->getSourceLevelControl())
+        driver->setSourceLevelControl(false);
+    if(driver->getSourceLevel() != MINIMAL)
+        driver->setSourceLevel(MINIMAL);
 
     // Clean queueSendIM
     while(!queueSendIM.empty())
@@ -401,8 +436,7 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
 std::string Task::getStringOfSettings(DeviceSettings settings)
 {
     std::stringstream text;
-    text << "Source Level: " << settings.sourceLevel << endl << "Source Level Control: " << (settings.sourceLevelControl?"true":"false") << endl
-            << "Low Gain: " << (settings.lowGain?"true":"false") << endl << "Carrier Waveform ID: " << settings.carrierWaveformId << endl
+    text << "Low Gain: " << (settings.lowGain?"true":"false") << endl << "Carrier Waveform ID: " << settings.carrierWaveformId << endl
             << "Local Address: " << settings.localAddress << endl << "Remote Address: " << settings.remoteAddress << endl
             << "Highest Address: " << settings.highestAddress << endl << "Cluster Size: " << settings.clusterSize << endl
             << "Packet Time [ms]: " << settings.packetTime << endl << "Retry Count: " << settings.retryCount << endl
@@ -413,5 +447,14 @@ std::string Task::getStringOfSettings(DeviceSettings settings)
     for(int i=0; i < settings.poolSize.size(); i++)
         text << "Pool size [" << i <<"]: " << settings.poolSize[i];
 
+    return text.str();
+}
+
+// Get settings in string for log purpose
+std::string Task::getStringOfSettings(DeviceSettings settings, SourceLevel source_level, bool source_level_control)
+{
+    std::stringstream text;
+    text << "Source Level: " << source_level << endl << "Source Level Control: " << (source_level_control?"true":"false") << endl
+            << getStringOfSettings(settings);
     return text.str();
 }

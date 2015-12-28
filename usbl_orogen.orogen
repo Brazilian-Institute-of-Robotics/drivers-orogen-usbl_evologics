@@ -26,10 +26,23 @@ task_context "Task" do
    # COMMAND, raw_data can not be transmitted over acoustic link, remaining exclusively for messages.
    property "mode", "/usbl_evologics/OperationMode", :DATA   
    # Desired device settings.
-   property "desired_device_settings", "/usbl_evologics/DeviceSettings" 
+   property "desired_device_settings", "/usbl_evologics/DeviceSettings"
    # Period for status update. Defaults to one second
    property "status_period", "base/Time"
    
+   # Source Level. Defines the Sound Pressure Level (SPL) in transmission mode.
+   #  MAXIMUM = 0. SPL = 184 dB. To be set carefully.
+   #  HIGH = 1. SPL = 178 dB.
+   #  LOW = 2. SPL = 172 dB.
+   #  MINIMAL = 3. SPL = 164 dB.
+   #  IN_AIR = 3. Alias of MINIMAL. Use this values for outside water test.
+   property("source_level","/usbl_evologics/SourceLevel",:MINIMAL).dynamic
+   # Source Level Control.
+   #  TRUE: The local device's Source Level can be changed by a remote device.
+   #        The local device will adopt the remote device's Source Level setting during connection establishment
+   #        when the remote device sends raw data.
+   #  FALSE: THe local Source Level setting can not be changed by a remote device.
+   property("source_level_control","bool",false).dynamic
      
    
    
@@ -105,9 +118,6 @@ task_context "UsblAUV" do
    subclasses "Task"
    needs_configuration
    
-   # Monitoring the actual depth of the vehicle, so the usbl doesn't use high power signal outside the water when it's on the surface.
-   input_port "position_samples", "/base/samples/RigidBodyState"
-
    # Serial Connection  
    
 end

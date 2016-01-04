@@ -38,7 +38,6 @@ bool UsblAUV::configureHook()
             return false;
         }
     }
-
     return true;
 }
 bool UsblAUV::startHook()
@@ -63,4 +62,3 @@ void UsblAUV::cleanupHook()
 {
     UsblAUVBase::cleanupHook();
 }
-

@@ -9,16 +9,62 @@ Task::Task(std::string const& name)
     : TaskBase(name)
 {
     _status_period.set(base::Time::fromSeconds(1));
+
+    // Defines the moment of sending new instant message
+    im_wait_ack = false;
+    // TODO need check. Arbitrary set the wait time for 10 seconds.
+    timeout_delivery_report = base::Time::fromSeconds(10);
+    //Initialize Instant Messages counters
+    message_status.messageDelivered = 0;
+    message_status.messageFailed = 0;
+    message_status.messageReceived = 0;
+    message_status.messageSent = 0;
+    // Initialize raw data counters
+    sent_raw_data_counter = 0;
+    received_raw_data_counter = 0;
 }
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     : TaskBase(name, engine)
 {
     _status_period.set(base::Time::fromSeconds(1));
+
+    // Defines the moment of sending new instant message
+    im_wait_ack = false;
+    // TODO need check. Arbitrary set the wait time for 10 seconds.
+    timeout_delivery_report = base::Time::fromSeconds(10);
+    //Initialize Instant Messages counters
+    message_status.messageDelivered = 0;
+    message_status.messageFailed = 0;
+    message_status.messageReceived = 0;
+    message_status.messageSent = 0;
+    // Initialize raw data counters
+    sent_raw_data_counter = 0;
+    received_raw_data_counter = 0;
 }
 
 Task::~Task()
 {
+}
+
+bool Task::setSource_level(SourceLevel value)
+{
+    if(driver->getSourceLevel() != value)
+    {
+        driver->setSourceLevel(value);
+        RTT::log(RTT::Info) << "USBL's source level change to \"" << value << "\"" << endl;
+    }
+ return(usbl_evologics::TaskBase::setSource_level(value));
+}
+
+bool Task::setSource_level_control(bool value)
+{
+    if(driver->getSourceLevelControl() != value)
+    {
+        driver->setSourceLevelControl(value);
+        RTT::log(RTT::Info) << "USBL's source level control change to \"" << (value?"true":"false") << "\"" << endl;
+    }
+ return(usbl_evologics::TaskBase::setSource_level_control(value));
 }
 
 // Reset Device to stored settings and restart it.
@@ -74,16 +120,13 @@ bool Task::configureHook()
     if(driver->getMode() != _mode.get())
         driver->setOperationMode(_mode.get());
 
+    // Initialize source level parameters
+    updateDynamicProperties();
+
     // Get parameters.
     DeviceSettings desired_settings = _desired_device_settings.get();
     current_settings = getDeviceSettings();
-    RTT::log(RTT::Info) << "USBL's initial settings"<< endl << getStringOfSettings(current_settings) << endl;
-
-    // TODO need check. Arbitrary set the wait time for 5 seconds.
-    timeout_delivery_report = base::Time::fromSeconds(5);
-    //Set counter
-    im_retries_counter = current_settings.imRetry;
-    old_message_report = true;
+    RTT::log(RTT::Info) << "USBL's initial settings"<< endl << getStringOfSettings(current_settings, driver->getSourceLevel(), driver->getSourceLevelControl()) << endl;
 
     // Update parameters.
     if(_change_parameters.get())
@@ -93,6 +136,10 @@ bool Task::configureHook()
         current_settings = desired_settings;
         RTT::log(RTT::Info) << "USBL's updated settings"<< endl << getStringOfSettings(current_settings) << endl;
     }
+    // Hack to get the actual parameters, and in case it's need to update one or other parameters, the user is not required to know how to set the whole configuration.
+    else
+        _desired_device_settings.set(current_settings);
+
 
     // Reset drop & overflow counter if desired.
     resetCounters(_reset_drop_counter.get(), _reset_overflow_counter.get());
@@ -128,16 +175,25 @@ void Task::updateHook()
        lastStatus = base::Time::now();
 
        _acoustic_connection.write(driver->getConnectionStatus());
-       _acoustic_channel.write(driver->getAcousticChannelparameters());
-       MessageStatus message_status;
+
+       AcousticChannel acoustic_channel = driver->getAcousticChannelparameters();
+       acoustic_channel.sent_raw_data = sent_raw_data_counter;
+       acoustic_channel.received_raw_data = received_raw_data_counter;
+       _acoustic_channel.write(acoustic_channel);
+
        message_status.status = driver->getIMDeliveryStatus();
        if(message_status.status != EMPTY)
            message_status.sendIm = last_send_IM;
+       else
+       {
+           SendIM empty_IM;
+           message_status.sendIm = empty_IM;
+       }
        message_status.time = base::Time::now();
        _message_status.write(message_status);
 
        // Check for the last delivery report.
-       if(base::Time::now() - last_delivery_report > timeout_delivery_report && current_settings.imRetry != im_retries_counter)
+       if(base::Time::now() - last_im_sent > timeout_delivery_report && im_wait_ack)
        {
            RTT::log(RTT::Error) << "Timeout while wait for a delivery report." << std::endl;
            exception(MISSING_DELIVERY_REPORT);
@@ -167,17 +223,26 @@ void Task::updateHook()
    {
        // Only send a new Instant Message if there is no other message been transmitted or if device doesn't wait for report of previously message.
        DeliveryStatus delivery_status;
-       while(((delivery_status = driver->getIMDeliveryStatus()) == EMPTY || delivery_status == FAILED) && !queueSendIM.empty() && im_retries_counter == current_settings.imRetry)
+       while(((delivery_status = driver->getIMDeliveryStatus()) != EMPTY || delivery_status == FAILED)
+               && !queueSendIM.empty() && !im_wait_ack)
        {
            // Check free transmission buffer and instant message size.
            checkFreeBuffer(driver->getStringOfIM(queueSendIM.front()), acoustic_connection);
 
            // Send latest message in queue.
            driver->sendInstantMessage(queueSendIM.front());
+           //Add counter
+           message_status.messageSent++;
            // Last send Instant Message
            last_send_IM = queueSendIM.front();
+           // Disable sending message until get a delivery report. Wait for acknowledgment.
+           if(queueSendIM.front().deliveryReport)
+           {
+               im_wait_ack = true;
+               last_im_sent = base::Time::now();
+           }
            // If no delivery report is requested, pop message from queue.
-           if(!queueSendIM.front().deliveryReport)
+           else
                queueSendIM.pop();
        }
 
@@ -191,6 +256,7 @@ void Task::updateHook()
            {
                filterRawData(buffer);
                driver->sendRawData(raw_data_input.data);
+               sent_raw_data_counter += raw_data_input.data.size();
            }
            else
                RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device can not send raw_data \""<< raw_data_input.data.data() << "\" in COMMAND mode. Be sure to switch device to DATA mode" << std::endl;
@@ -208,6 +274,7 @@ void Task::updateHook()
        raw_packet_buffer.time = base::Time::now();
        raw_packet_buffer.data = driver->getRawData();
        _raw_data_output.write(raw_packet_buffer);
+       received_raw_data_counter += raw_packet_buffer.data.size();
    }
 
    // An internal error has occurred on device. Manual says to reset the device.
@@ -235,6 +302,13 @@ void Task::cleanupHook()
     //Make sure to set the device to its default operational mode, DATA.
     if(driver->getMode() == COMMAND)
         driver->switchToDataMode();
+
+    //TODO set back device to MINIMAL/IN_AIR source level to avoid damage device.
+    if(driver->getSourceLevelControl())
+        driver->setSourceLevelControl(false);
+    if(driver->getSourceLevel() != MINIMAL)
+        driver->setSourceLevel(MINIMAL);
+
     // Clean queueSendIM
     while(!queueSendIM.empty())
         queueSendIM.pop();
@@ -295,6 +369,7 @@ void Task::processNotification(NotificationInfo const &notification)
     if(notification.notification == RECVIM)
     {
         _message_output.write(driver->receiveInstantMessage(notification.buffer));
+        message_status.messageReceived++;
         return ;
     }
     else if(notification.notification == DELIVERY_REPORT)
@@ -326,48 +401,31 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
     if(notification.notification != DELIVERY_REPORT)
         throw runtime_error("Usbl_evologics Task.cpp. processDeliveryReportNotification did not receive a delivery report.");
 
-    // Pop Message since first delivery report.
-    if(!queueSendIM.empty() && im_retries_counter == current_settings.imRetry)
+    // Got a report from a old message, while it was not expected.
+    if(!im_wait_ack)
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device received a delivered acknowledgment for an old Instant Message" << std::endl;
+
+    // Pop message from queue and confirm the report receipt.
+    if(!queueSendIM.empty() && im_wait_ack)
     {
         queueSendIM.pop();
-        old_message_report = false;
+        im_wait_ack = false;
     }
-    last_delivery_report = base::Time::now();
 
-    MessageStatus message_status;
     if(!driver->getIMDeliveryReport(notification.buffer))
     {
         message_status.status = FAILED;
-        std::stringstream retries_count;
-        retries_count << im_retries_counter;
+        message_status.messageFailed++;
+
         std::stringstream error_msg;
         error_msg << "Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for Instant Message: \""
-                << UsblParser::printBuffer(last_send_IM.buffer) << "\". Usbl will make \"" << ((current_settings.imRetry < 255) ? retries_count.str():"Indefinitely")
-                << "\" retries to send message";
-
-        // Got a Failed report from a old message
-        if(old_message_report)
-            error_msg.str(std::string("Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for an old instant Instant Message"));
-
-        // Decrease counter till it reach 0.
-        // In case device does a finite amount of retries
-        // In case counter hasn't reached zero
-        // In case it is a report from an actual message (not an old one).
-        else if(current_settings.imRetry > 0 && current_settings.imRetry < 255
-                && im_retries_counter > 0)
-            im_retries_counter--;
-        // Reset counter in case it reach it's limit
-        else if(current_settings.imRetry && im_retries_counter <= 0)
-            im_retries_counter = current_settings.imRetry;
-
+                << UsblParser::printBuffer(last_send_IM.buffer) << "\".";
         RTT::log(RTT::Error) << error_msg.str() << std::endl;
     }
     else
     {
         message_status.status = DELIVERED;
-        // Reset counter
-        if (im_retries_counter != current_settings.imRetry)
-            im_retries_counter = current_settings.imRetry;
+        message_status.messageDelivered++;
     }
 
     message_status.sendIm = last_send_IM;
@@ -378,8 +436,7 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
 std::string Task::getStringOfSettings(DeviceSettings settings)
 {
     std::stringstream text;
-    text << "Source Level: " << settings.sourceLevel << endl << "Source Level Control: " << (settings.sourceLevelControl?"true":"false") << endl
-            << "Low Gain: " << (settings.lowGain?"true":"false") << endl << "Carrier Waveform ID: " << settings.carrierWaveformId << endl
+    text << "Low Gain: " << (settings.lowGain?"true":"false") << endl << "Carrier Waveform ID: " << settings.carrierWaveformId << endl
             << "Local Address: " << settings.localAddress << endl << "Remote Address: " << settings.remoteAddress << endl
             << "Highest Address: " << settings.highestAddress << endl << "Cluster Size: " << settings.clusterSize << endl
             << "Packet Time [ms]: " << settings.packetTime << endl << "Retry Count: " << settings.retryCount << endl
@@ -387,5 +444,17 @@ std::string Task::getStringOfSettings(DeviceSettings settings)
             << "Sound Speed [m/s]: " << settings.speedSound << endl << "Instant Message Retry: " << settings.imRetry << endl
             << "Promiscuous Mode: " << (settings.promiscuosMode?"true":"false") << endl << "Wake Up Active Time [s]: " << settings.wuActiveTime << endl
             << "Wake Up Period [s]: " << settings.wuPeriod << endl << "Wake Up Hold Time [s]: " << settings.wuHoldTimeout << endl;
+    for(int i=0; i < settings.poolSize.size(); i++)
+        text << "Pool size [" << i <<"]: " << settings.poolSize[i];
+
+    return text.str();
+}
+
+// Get settings in string for log purpose
+std::string Task::getStringOfSettings(DeviceSettings settings, SourceLevel source_level, bool source_level_control)
+{
+    std::stringstream text;
+    text << "Source Level: " << source_level << endl << "Source Level Control: " << (source_level_control?"true":"false") << endl
+            << getStringOfSettings(settings);
     return text.str();
 }

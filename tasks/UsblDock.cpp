@@ -76,8 +76,7 @@ void UsblDock::processParticularNotification(NotificationInfo const &notificatio
     }
     else if(notification.notification == USBLANGLE)
     {
-        std::string info = "Usbl_evologics UsblDock.cpp. Device is not able to compute exact position of remote device. Instead got it's direction: ";
-        RTT::log(RTT::Error) << info << "\"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+        _direction_samples.write(driver->getDirection(notification.buffer));
         return ;
     }
     else
@@ -86,4 +85,3 @@ void UsblDock::processParticularNotification(NotificationInfo const &notificatio
         return ;
     }
 }
-

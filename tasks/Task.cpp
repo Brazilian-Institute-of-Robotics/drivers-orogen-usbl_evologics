@@ -444,7 +444,7 @@ std::string Task::getStringOfSettings(DeviceSettings settings)
             << "Sound Speed [m/s]: " << settings.speedSound << endl << "Instant Message Retry: " << settings.imRetry << endl
             << "Promiscuous Mode: " << (settings.promiscuosMode?"true":"false") << endl << "Wake Up Active Time [s]: " << settings.wuActiveTime << endl
             << "Wake Up Period [s]: " << settings.wuPeriod << endl << "Wake Up Hold Time [s]: " << settings.wuHoldTimeout << endl;
-    for(int i=0; i < settings.poolSize.size(); i++)
+    for(size_t i=0; i < settings.poolSize.size(); i++)
         text << "Pool size [" << i <<"]: " << settings.poolSize[i];
 
     return text.str();

@@ -33,7 +33,7 @@ namespace usbl_evologics {
 
 	    std::queue<SendIM> queueSendIM;
 	    // Arbitrarily defining a max size for queueSendIM.
-	    int MAX_QUEUE_MSG_SIZE = 50;
+	    static const size_t MAX_QUEUE_MSG_SIZE = 50;
 	    SendIM last_send_IM;
 
 
@@ -57,7 +57,7 @@ namespace usbl_evologics {
 
 	    DeviceSettings current_settings;
 
-	    const int MAX_MSG_SIZE = 64;
+	    static const size_t MAX_MSG_SIZE = 64;
 
         /** Reset Device to stored settings and restart it.
          *

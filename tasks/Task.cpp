@@ -301,20 +301,13 @@ DeviceSettings Task::getDeviceSettings(void)
     return current_settings;
 }
 
-void Task::checkFreeBuffer(std::string const &buffer, AcousticConnection const &acoustic_connection)
-{
-    // Only check the first and actual channel.
-    if(buffer.size() > acoustic_connection.freeBuffer.at(0))
-        // By now, only a message is logged. Let the data be dropped so it will be shown in the output port.
-        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Buffer \"" << UsblParser::printBuffer(buffer) << "\" has size of \"" << buffer.size() << "\" which is bigger than free transmission buffer (\""<< acoustic_connection.freeBuffer.at(0) <<"\"). Split your buffer or reduce the rate of transmission." << std::endl;
-}
-
 // TODO verify
 // Filter possible <+++ATcommand> in raw_data_input
-void Task::filterRawData( std::string const & raw_data_in)
+void Task::filterRawData( std::vector<uint8_t> const & raw_data_in)
 {
+    std::string buffer(raw_data_in.begin(), raw_data_in.end());
     // Find "+++"
-    if (raw_data_in.find("+++") != string::npos)
+    if (buffer.find("+++") != string::npos)
     {
         std::string error_msg = "Usbl_evologics Task.cpp. There is the malicious string \"+++\" in raw_data_input. DO NOT use it as it could be interpreted as a command by device.";
         RTT::log(RTT::Error) << error_msg << std::endl;
@@ -514,7 +507,7 @@ void Task::transmitRawData(void)
         return;
     if(driver->getMode() == DATA)
     {
-        filterRawData(buffer);
+        filterRawData(queueRawPacket.front().data);
         driver->sendRawData(queueRawPacket.front().data);
         sent_raw_data_counter += queueRawPacket.front().data.size();
         queueRawPacket.pop();

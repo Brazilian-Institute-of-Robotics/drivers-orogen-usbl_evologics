@@ -186,20 +186,13 @@ namespace usbl_evologics {
          */
         void resetCounters(bool drop_counter, bool overflow_counter);
 
-        /** Verify if free transmission buffer is big enough to support message.
-         *
-         * @param buffer to be transmitted to remote device.
-         * @param acoustic_connection contains amount of free buffer.
-         */
-        void checkFreeBuffer(std::string const &buffer, AcousticConnection const &acoustic_connection);
-
         /** Filter possible <+++ATcommand> in raw_data_input
          *
          *  Do not let raw_data_input mess up with connection/device.
          *  Exception if found a "+++" in raw_data_input
          *  @param raw_data_in data that goes to local device and can not have a <+++ATcommand> on it.
          */
-        void filterRawData( std::string const & raw_data_in);
+        void filterRawData( std::vector<uint8_t> const & raw_data_in);
 
         /** Process notification
          *

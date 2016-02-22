@@ -92,7 +92,8 @@ task_context "Task" do
    #  and will automaticly retry to deliver it "device_settings.imRetry" times.
    #  The driver will expect the same amount of FAILED delivery report if not receive a DELIREVED report before that.
    #  If this doesn't happen, driver get in exception state.
-   exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA, :MISSING_DELIVERY_REPORT
+   exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA, :MISSING_DELIVERY_REPORT,
+                    :HUGE_RAW_DATA_INPUT, :HUGE_INSTANT_MESSAGE, :FULL_RAW_DATA_QUEUE, :FULL_IM_QUEUE
 
 end
 

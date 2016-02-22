@@ -31,11 +31,16 @@ namespace usbl_evologics {
 
 	    boost::shared_ptr<Driver>  driver;
 
+	    // Queue of Instant Messages to be transmitted to remote device.
 	    std::queue<SendIM> queueSendIM;
 	    // Arbitrarily defining a max size for queueSendIM.
 	    static const size_t MAX_QUEUE_MSG_SIZE = 50;
 	    SendIM last_send_IM;
 
+	    // Queue of Packets to be transmitted to remote device.
+	    std::queue<iodrivers_base::RawPacket> queueRawPacket;
+	    // Arbitrarily defining a max size for queueRawPacket.
+	    static const size_t MAX_QUEUE_RAW_PACKET_SIZE = 50;
 
 	    // Retries counter of instant message.
 	    int im_retries_counter;
@@ -247,6 +252,48 @@ namespace usbl_evologics {
          *               False: Source level set by local property.
          */
         bool setSource_level_control(bool value);
+
+        /** Enqueue a Raw packet to be transmitted to remote device
+         *
+         *  Check the size of the free transmission buffer in usbl before send the packet and the size of the queue.
+         * @param RawPacket to be transmitted.
+         * @param transmission buffer size
+         */
+        void enqueueRawPacket(iodrivers_base::RawPacket const &raw_packet, DeviceSettings const &pool_size);
+
+        /** Enqueue a Instant Message to be transmitted to remote device
+         *
+         *  Check the size of the free transmission buffer in usbl before send the IM and the size of the queue.
+         * @param Instant Message to be transmitted.
+         * @param transmission buffer size
+         */
+        void enqueueSendIM(SendIM const &sendIM);
+
+        /** Check if transmission of IM is available
+         *
+         * @para acoustic_connection. Connection status and free buffer
+         * @return bool
+         */
+        bool isSendIMAvbl( AcousticConnection const& acoustic_connection);
+
+        /** Check if transmission of Raw Data is available
+         *
+         * @para acoustic_connection. Connection status and free buffer
+         * @retunr bool
+         */
+        bool isTransRawDataAvbl( AcousticConnection const& acoustic_connection);
+
+        /** Send Instant Message to usbl
+         *
+         *  Get Instant Message from queue and transmit it
+         */
+        void sendIM(void);
+
+        /** Send Raw Data to usbl
+         *
+         *  Get Raw Data from queue and transmit it
+         */
+        void transmitRawData(void);
 
     };
 }

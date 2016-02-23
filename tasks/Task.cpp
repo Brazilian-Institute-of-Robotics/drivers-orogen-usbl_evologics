@@ -11,8 +11,6 @@ Task::Task(std::string const& name)
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));
 
-    // Defines the moment of sending new instant message
-    im_wait_ack = false;
     //Initialize Instant Messages counters
     message_status.messageDelivered = 0;
     message_status.messageFailed = 0;
@@ -29,8 +27,6 @@ Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));
 
-    // Defines the moment of sending new instant message
-    im_wait_ack = false;
     //Initialize Instant Messages counters
     message_status.messageDelivered = 0;
     message_status.messageFailed = 0;
@@ -157,7 +153,7 @@ bool Task::startHook()
     if (! TaskBase::startHook())
         return false;
 
-    lastStatus = base::Time::now();
+    last_status = base::Time::now();
 
     cout << "USBL working" << endl;
 
@@ -168,9 +164,9 @@ void Task::updateHook()
     TaskBase::updateHook();
 
     // Output status
-   if((base::Time::now() - lastStatus) > _status_period.get())
+   if((base::Time::now() - last_status) > _status_period.get())
    {
-       lastStatus = base::Time::now();
+       last_status = base::Time::now();
 
        _acoustic_connection.write(driver->getConnectionStatus());
 
@@ -179,24 +175,8 @@ void Task::updateHook()
        acoustic_channel.received_raw_data = received_raw_data_counter;
        _acoustic_channel.write(acoustic_channel);
 
-       message_status.status = driver->getIMDeliveryStatus();
-       if(message_status.status != EMPTY)
-           message_status.sendIm = last_send_IM;
-       else
-       {
-           SendIM empty_IM;
-           message_status.sendIm = empty_IM;
-       }
-       message_status.time = base::Time::now();
-       _message_status.write(message_status);
+       _message_status.write(checkMessageStatus());
 
-       // Check for the last delivery report.
-       if(base::Time::now() - last_im_sent > _timeout_delivery_report.get() && im_wait_ack)
-       {
-           RTT::log(RTT::Error) << "Timeout while wait for a delivery report." << std::endl;
-           exception(MISSING_DELIVERY_REPORT);
-           return;
-       }
    }
 
    SendIM send_IM;
@@ -333,7 +313,7 @@ void Task::processNotification(NotificationInfo const &notification)
         if(!queueSendIM.empty())
             error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message: \"" << UsblParser::printBuffer(queueSendIM.front().buffer) << "\". Be sure to wait delivery of last IM.";
         else
-            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message. But I don't know from which message is this notification. Maybe from an old one, like: \""<< UsblParser::printBuffer(last_send_IM.buffer) <<"\"" <<", or one that doesn't require notification.";
+            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message. But I don't know from which message is this notification. Maybe from an old one or one that doesn't require ack notification.";
         RTT::log(RTT::Error) << error_msg.str() << std::endl;
         return ;
     }
@@ -352,14 +332,19 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
         throw runtime_error("Usbl_evologics Task.cpp. processDeliveryReportNotification did not receive a delivery report.");
 
     // Got a report from a old message, while it was not expected.
-    if(!im_wait_ack)
+    if( queueSendIM.empty())
         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device received a delivered acknowledgment for an old Instant Message" << std::endl;
 
+    if( !queueSendIM.empty() && !queueSendIM.front().deliveryReport)
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device received a delivered acknowledgment for an unexpected or old Instant Message" << std::endl;
+
+    SendIM error_log_im;
     // Pop message from queue and confirm the report receipt.
-    if(!queueSendIM.empty() && im_wait_ack)
+    if( !queueSendIM.empty() && queueSendIM.front().deliveryReport)
     {
+        message_status.sendIm = queueSendIM.front();
+        error_log_im = queueSendIM.front();
         queueSendIM.pop();
-        im_wait_ack = false;
     }
 
     if(!driver->getIMDeliveryReport(notification.buffer))
@@ -369,7 +354,7 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
 
         std::stringstream error_msg;
         error_msg << "Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for Instant Message: \""
-                << UsblParser::printBuffer(last_send_IM.buffer) << "\".";
+                << UsblParser::printBuffer(error_log_im.buffer) << "\".";
         RTT::log(RTT::Error) << error_msg.str() << std::endl;
     }
     else
@@ -378,7 +363,54 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
         message_status.messageDelivered++;
     }
 
-    message_status.sendIm = last_send_IM;
+    message_status.time = base::Time::now();
+    return message_status;
+}
+
+MessageStatus Task::checkMessageStatus(void)
+{
+    message_status.status = driver->getIMDeliveryStatus();
+    if(message_status.status == PENDING)
+    {
+        // Delivering an old message.
+        // No message in queue that requires an ack.
+        if( queueSendIM.empty())
+            RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device received a delivered acknowledgment for an old Instant Message" << std::endl;
+
+        else if( !queueSendIM.empty() && !queueSendIM.front().deliveryReport)
+            RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device received a delivered acknowledgment for an unexpected or old Instant Message" << std::endl;
+        // Delivering an actual message that requires an ack
+        else
+        {
+            message_status.sendIm = queueSendIM.front();
+            // Check for the last delivery report.
+            if(base::Time::now() - last_im_sent > _timeout_delivery_report.get())
+            {
+                exception(MISSING_DELIVERY_REPORT);
+                std::runtime_error("Timeout while wait for a delivery report.");
+            }
+        }
+    }
+    else if(message_status.status == EMPTY)
+    {
+        SendIM empty_IM;
+        message_status.sendIm = empty_IM;
+    }
+    /**
+     * else if(message_status.status == FAILED)
+     * In case of not receiving an ack, the state the IMDeliveryState remains in FAILED. It will not be reset, but the device can delivery a new message.
+     * The Failed Message is registered in message_status.sendIM with the FAILED Notification.
+     */
+    message_status.time = base::Time::now();
+    return message_status;
+}
+
+MessageStatus Task::updateMessageStatusForNonAck(SendIM const& non_ack_required_im)
+{
+    if(non_ack_required_im.deliveryReport)
+        throw runtime_error("Usbl_evologics Task.cpp. updateMessageStatusForNonAck received an ack_required_im.");
+    message_status.sendIm = non_ack_required_im;
+    message_status.status = DELIVERED;
     message_status.time = base::Time::now();
     return message_status;
 }
@@ -453,9 +485,6 @@ bool Task::isSendIMAvbl(AcousticConnection const& acoustic_connection)
     // No Instant Message to transmit
     if( queueSendIM.empty())
         return false;
-    // Wait for ack of previous Instant Message
-    if( im_wait_ack)
-        return false;
     // Check free buffer size
     if( acoustic_connection.freeBuffer[0] < MAX_MSG_SIZE)
         return false;
@@ -485,18 +514,17 @@ void Task::sendOneIM(void)
     driver->sendInstantMessage(queueSendIM.front());
     //Add counter
     message_status.messageSent++;
-    // Last send Instant Message
-    last_send_IM = queueSendIM.front();
 
-    // Disable sending message until get a delivery report. Wait for acknowledgment.
+    // Starting count for the timeout_delivery_report
     if(queueSendIM.front().deliveryReport)
-    {
-        im_wait_ack = true;
         last_im_sent = base::Time::now();
-    }
     // If no delivery report is requested, pop message from queue.
     else
+    {
+        // Register that the non_ack_required_IM was delivered.
+        _message_status.write(updateMessageStatusForNonAck(queueSendIM.front()));
         queueSendIM.pop();
+    }
 }
 
 void Task::sendOneRawData(void)

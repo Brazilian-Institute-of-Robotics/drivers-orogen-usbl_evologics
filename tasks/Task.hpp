@@ -35,7 +35,6 @@ namespace usbl_evologics {
 	    std::queue<SendIM> queueSendIM;
 	    // Arbitrarily defining a max size for queueSendIM.
 	    static const size_t MAX_QUEUE_MSG_SIZE = 50;
-	    SendIM last_send_IM;
 
 	    // Queue of Packets to be transmitted to remote device.
 	    std::queue<iodrivers_base::RawPacket> queueSendRawPacket;
@@ -52,12 +51,10 @@ namespace usbl_evologics {
 	    long long unsigned int sent_raw_data_counter;
 	    long long unsigned int received_raw_data_counter;
 
-	    // Manage the moment of sending new messages.
-	    bool im_wait_ack;
 
 	    AcousticConnection acoustic_connection;
 
-	    base::Time lastStatus;
+	    base::Time last_status;
 
 	    DeviceSettings current_settings;
 
@@ -215,6 +212,20 @@ namespace usbl_evologics {
          * @return MessageStatus to be output.
          */
         MessageStatus processDeliveryReportNotification(NotificationInfo const &notification);
+
+        /** Check actual message status
+         *
+         * Verify if there is a message been delivered.
+         * @return MessageStatus to be output.
+         */
+        MessageStatus checkMessageStatus(void);
+
+        /** Update message status for message that doesn't require ack
+         *
+         * @param non_ack_required message
+         * @return MessageStatus to be output.
+         */
+        MessageStatus updateMessageStatusForNonAck(SendIM const& non_ack_required_im);
 
         /** Get settings in string for log purpose
          *

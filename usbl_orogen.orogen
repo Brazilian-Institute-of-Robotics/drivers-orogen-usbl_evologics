@@ -29,6 +29,8 @@ task_context "Task" do
    property "desired_device_settings", "/usbl_evologics/DeviceSettings"
    # Period for status update. Defaults to one second
    property "status_period", "base/Time"
+   # Timeout for delivery report of Instant Message. Defaults to ten seconds.
+   property "timeout_delivery_report", "base/Time"
    
    # Source Level. Defines the Sound Pressure Level (SPL) in transmission mode.
    #  MAXIMUM = 0. SPL = 184 dB. To be set carefully.

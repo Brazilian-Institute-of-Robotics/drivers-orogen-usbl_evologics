@@ -38,14 +38,13 @@ namespace usbl_evologics {
 	    SendIM last_send_IM;
 
 	    // Queue of Packets to be transmitted to remote device.
-	    std::queue<iodrivers_base::RawPacket> queueRawPacket;
-	    // Arbitrarily defining a max size for queueRawPacket.
+	    std::queue<iodrivers_base::RawPacket> queueSendRawPacket;
+	    // Arbitrarily defining a max size for queueSendRawPacket.
 	    static const size_t MAX_QUEUE_RAW_PACKET_SIZE = 50;
 
 	    // Retries counter of instant message.
 	    int im_retries_counter;
 	    base::Time last_im_sent;
-	    base::Time timeout_delivery_report;
 
 	    MessageStatus message_status;
 
@@ -252,7 +251,7 @@ namespace usbl_evologics {
          * @param RawPacket to be transmitted.
          * @param transmission buffer size
          */
-        void enqueueRawPacket(iodrivers_base::RawPacket const &raw_packet, DeviceSettings const &pool_size);
+        void enqueueSendRawPacket(iodrivers_base::RawPacket const &raw_packet, DeviceSettings const &pool_size);
 
         /** Enqueue a Instant Message to be transmitted to remote device
          *
@@ -274,19 +273,19 @@ namespace usbl_evologics {
          * @para acoustic_connection. Connection status and free buffer
          * @retunr bool
          */
-        bool isTransRawDataAvbl( AcousticConnection const& acoustic_connection);
+        bool isSendRawDataAvbl( AcousticConnection const& acoustic_connection);
 
         /** Send Instant Message to usbl
          *
          *  Get Instant Message from queue and transmit it
          */
-        void sendIM(void);
+        void sendOneIM(void);
 
         /** Send Raw Data to usbl
          *
          *  Get Raw Data from queue and transmit it
          */
-        void transmitRawData(void);
+        void sendOneRawData(void);
 
     };
 }

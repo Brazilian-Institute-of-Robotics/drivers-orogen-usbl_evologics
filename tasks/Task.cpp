@@ -9,11 +9,10 @@ Task::Task(std::string const& name)
     : TaskBase(name)
 {
     _status_period.set(base::Time::fromSeconds(1));
+    _timeout_delivery_report.set(base::Time::fromSeconds(10));
 
     // Defines the moment of sending new instant message
     im_wait_ack = false;
-    // TODO need check. Arbitrary set the wait time for 10 seconds.
-    timeout_delivery_report = base::Time::fromSeconds(10);
     //Initialize Instant Messages counters
     message_status.messageDelivered = 0;
     message_status.messageFailed = 0;
@@ -28,11 +27,10 @@ Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     : TaskBase(name, engine)
 {
     _status_period.set(base::Time::fromSeconds(1));
+    _timeout_delivery_report.set(base::Time::fromSeconds(10));
 
     // Defines the moment of sending new instant message
     im_wait_ack = false;
-    // TODO need check. Arbitrary set the wait time for 10 seconds.
-    timeout_delivery_report = base::Time::fromSeconds(10);
     //Initialize Instant Messages counters
     message_status.messageDelivered = 0;
     message_status.messageFailed = 0;
@@ -193,7 +191,7 @@ void Task::updateHook()
        _message_status.write(message_status);
 
        // Check for the last delivery report.
-       if(base::Time::now() - last_im_sent > timeout_delivery_report && im_wait_ack)
+       if(base::Time::now() - last_im_sent > _timeout_delivery_report.get() && im_wait_ack)
        {
            RTT::log(RTT::Error) << "Timeout while wait for a delivery report." << std::endl;
            exception(MISSING_DELIVERY_REPORT);
@@ -209,15 +207,15 @@ void Task::updateHook()
    // Enqueue Raw data to be transmitted
    iodrivers_base::RawPacket raw_data_input;
    while(_raw_data_input.read(raw_data_input) == RTT::NewData)
-       enqueueRawPacket(raw_data_input, current_settings);
+       enqueueSendRawPacket(raw_data_input, current_settings);
 
    // Transmit enqueued Instant Message
    while( isSendIMAvbl(driver->getConnectionStatus()))
-       sendIM();
+       sendOneIM();
 
    // Transmit enqueued Raw Data
-   while( isTransRawDataAvbl(acoustic_connection = driver->getConnectionStatus()))
-       transmitRawData();
+   while( isSendRawDataAvbl(acoustic_connection = driver->getConnectionStatus()))
+       sendOneRawData();
 
    // Process received notification from device
    while(driver->hasNotification())
@@ -268,9 +266,9 @@ void Task::cleanupHook()
     // Clean queueSendIM
     while(!queueSendIM.empty())
         queueSendIM.pop();
-    // Clean queueRawPacket
-    while(!queueRawPacket.empty())
-        queueRawPacket.pop();
+    // Clean queueSendRawPacket
+    while(!queueSendRawPacket.empty())
+        queueSendRawPacket.pop();
 }
 void Task::processIO()
 {
@@ -411,7 +409,7 @@ std::string Task::getStringOfSettings(DeviceSettings settings, SourceLevel sourc
     return text.str();
 }
 
-void Task::enqueueRawPacket(iodrivers_base::RawPacket const &raw_packet, DeviceSettings const &pool_size)
+void Task::enqueueSendRawPacket(iodrivers_base::RawPacket const &raw_packet, DeviceSettings const &pool_size)
 {
     // Considering just the first and actual channel. Let a minimal free buffer for delivery an Instant Message.
     if(raw_packet.data.size() > (pool_size.poolSize[0] - MAX_MSG_SIZE))
@@ -419,12 +417,12 @@ void Task::enqueueRawPacket(iodrivers_base::RawPacket const &raw_packet, DeviceS
         exception(HUGE_RAW_DATA_INPUT);
         return;
     }
-    if(queueRawPacket.size() > MAX_QUEUE_RAW_PACKET_SIZE)
+    if(queueSendRawPacket.size() > MAX_QUEUE_RAW_PACKET_SIZE)
     {
         exception(FULL_RAW_DATA_QUEUE);
         return;
     }
-    queueRawPacket.push(raw_packet);
+    queueSendRawPacket.push(raw_packet);
 }
 
 void Task::enqueueSendIM(SendIM const &sendIM)
@@ -464,21 +462,21 @@ bool Task::isSendIMAvbl(AcousticConnection const& acoustic_connection)
     return true;
 }
 
-bool Task::isTransRawDataAvbl( AcousticConnection const& acoustic_connection)
+bool Task::isSendRawDataAvbl( AcousticConnection const& acoustic_connection)
 {
     // TODO define exactly what to do for each acoustic_connection status
     if( acoustic_connection.status != ONLINE && acoustic_connection.status != INITIATION_ESTABLISH && acoustic_connection.status != INITIATION_LISTEN )
         return false;
     // No Raw Data to transmit
-    if( queueRawPacket.empty())
+    if( queueSendRawPacket.empty())
         return false;
     // Check free buffer size
-    if( acoustic_connection.freeBuffer[0] < queueRawPacket.front().data.size())
+    if( acoustic_connection.freeBuffer[0] < queueSendRawPacket.front().data.size())
         return false;
     return true;
 }
 
-void Task::sendIM(void)
+void Task::sendOneIM(void)
 {
     //Check if queue is not empty
     if(queueSendIM.empty())
@@ -501,22 +499,22 @@ void Task::sendIM(void)
         queueSendIM.pop();
 }
 
-void Task::transmitRawData(void)
+void Task::sendOneRawData(void)
 {
-    if(queueRawPacket.empty())
+    if(queueSendRawPacket.empty())
         return;
     if(driver->getMode() == DATA)
     {
-        filterRawData(queueRawPacket.front().data);
-        driver->sendRawData(queueRawPacket.front().data);
-        sent_raw_data_counter += queueRawPacket.front().data.size();
-        queueRawPacket.pop();
+        filterRawData(queueSendRawPacket.front().data);
+        driver->sendRawData(queueSendRawPacket.front().data);
+        sent_raw_data_counter += queueSendRawPacket.front().data.size();
+        queueSendRawPacket.pop();
     }
     else
     {
         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device can not send raw_data in COMMAND mode. Be sure to switch device to DATA mode" << std::endl;
         // Pop packet or let it get full and go to exception??
         // Pop it by now. If it's on COMMAND mode it's known raw packet won't be transmitted and make no reason to delivery a old raw packet if it switch back to DATA.
-        queueRawPacket.pop();
+        queueSendRawPacket.pop();
     }
 }

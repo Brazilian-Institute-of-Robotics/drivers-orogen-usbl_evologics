@@ -41,18 +41,17 @@ namespace usbl_evologics {
 	    // Arbitrarily defining a max size for queueSendRawPacket.
 	    static const size_t MAX_QUEUE_RAW_PACKET_SIZE = 50;
 
-	    // Retries counter of instant message.
-	    int im_retries_counter;
 	    base::Time last_im_sent;
 
-	    MessageStatus message_status;
-
 	    // Raw data counters
-	    long long unsigned int sent_raw_data_counter;
-	    long long unsigned int received_raw_data_counter;
+	    long long unsigned int counter_raw_data_sent;
+	    long long unsigned int counter_raw_data_received;
 
-
-	    AcousticConnection acoustic_connection;
+	    // Instant Message counters
+	    long long unsigned int counter_message_delivered;
+	    long long unsigned int counter_message_failed;
+	    long long unsigned int counter_message_received;
+	    long long unsigned int counter_message_sent;
 
 	    base::Time last_status;
 
@@ -298,6 +297,27 @@ namespace usbl_evologics {
          */
         void sendOneRawData(void);
 
+        /** Include raw_data counters on acoustic_connection
+         *
+         * @param acoustic_connection without raw_data counters
+         * @return acoustic_connection with raw_data counters
+         */
+        AcousticChannel addStatisticCounters( AcousticChannel const& acoustic_connection);
+
+        /** Include message counters on message_status
+         *
+         * @param message_status without message counters
+         * @return message_status with message counters
+         */
+        MessageStatus addStatisticCounters( MessageStatus const& message_status);
+
+        /** Check if an ack of a message is expected
+         *
+         *  @param queue_im.
+         *  TODO other param should be necessary.
+         *  @return true if first element in queue expect ack
+         */
+        bool waitIMAck(std::queue<SendIM> const& queue_im);
     };
 }
 

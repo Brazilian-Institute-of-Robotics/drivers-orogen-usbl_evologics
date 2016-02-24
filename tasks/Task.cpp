@@ -102,9 +102,9 @@ bool Task::configureHook()
         return false;
 
     // Set interface
-    if(_io_port.get().find("tcp") != std::string::npos)
+    if(_io_port.get().find("tcp") != string::npos)
         driver->setInterface(ETHERNET);
-    else if (_io_port.get().find("serial") != std::string::npos)
+    else if (_io_port.get().find("serial") != string::npos)
         driver->setInterface(SERIAL);
 
      // Set System Time for current Time.
@@ -140,8 +140,8 @@ bool Task::configureHook()
 
     // Log device's information
     VersionNumbers device_info = driver->getFirmwareInformation();
-    if(device_info.firmwareVersion.find("1.7") == std::string::npos)
-        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Component was developed for firmware version \"1.7\" and actual version is: \""<< device_info.firmwareVersion <<"\". Be aware of eventual incompatibility." << std::endl;
+    if(device_info.firmwareVersion.find("1.7") == string::npos)
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Component was developed for firmware version \"1.7\" and actual version is: \""<< device_info.firmwareVersion <<"\". Be aware of eventual incompatibility." << endl;
     RTT::log(RTT::Info) << "USBL's firmware information. Firmware version: "<< device_info.firmwareVersion
             <<"Physical and Data-Link layer protocol: "<< device_info.accousticVersion
             << "Manufacturer: " << device_info.manufacturer << endl;
@@ -208,7 +208,7 @@ void Task::updateHook()
    // An internal error has occurred on device. Manual says to reset the device.
    if(driver->getConnectionStatus().status == OFFLINE_ALARM)
    {
-       RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << std::endl;
+       RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << endl;
        exception(DEVICE_INTERNAL_ERROR);
        return;
    }
@@ -248,8 +248,8 @@ void Task::processIO()
     ResponseInfo response_info;
     if((response_info = driver->readResponse()).response != NO_RESPONSE)
     {
-        std::string info = "Usbl_evologics Task.cpp. In processIO, unexpected read a response of a request: ";
-        RTT::log(RTT::Error) << info <<"\""<< UsblParser::printBuffer(response_info.buffer) << "\"" << std::endl;
+        string info = "Usbl_evologics Task.cpp. In processIO, unexpected read a response of a request: ";
+        RTT::log(RTT::Error) << info <<"\""<< UsblParser::printBuffer(response_info.buffer) << "\"" << endl;
     }
 }
 
@@ -273,16 +273,16 @@ DeviceSettings Task::getDeviceSettings(void)
 
 // TODO verify
 // Filter possible <+++ATcommand> in raw_data_input
-void Task::filterRawData( std::vector<uint8_t> const & raw_data_in)
+void Task::filterRawData( vector<uint8_t> const & raw_data_in)
 {
-    std::string buffer(raw_data_in.begin(), raw_data_in.end());
+    string buffer(raw_data_in.begin(), raw_data_in.end());
     // Find "+++"
     if (buffer.find("+++") != string::npos)
     {
-        std::string error_msg = "Usbl_evologics Task.cpp. There is the malicious string \"+++\" in raw_data_input. DO NOT use it as it could be interpreted as a command by device.";
-        RTT::log(RTT::Error) << error_msg << std::endl;
+        string error_msg = "Usbl_evologics Task.cpp. There is the malicious string \"+++\" in raw_data_input. DO NOT use it as it could be interpreted as a command by device.";
+        RTT::log(RTT::Error) << error_msg << endl;
         exception(MALICIOUS_SEQUENCE_IN_RAW_DATA);
-        throw std::runtime_error(error_msg);
+        throw runtime_error(error_msg);
     }
 }
 
@@ -301,12 +301,12 @@ void Task::processNotification(NotificationInfo const &notification)
     }
     else if(notification.notification == CANCELED_IM)
     {
-        std::stringstream error_msg;
+        stringstream error_msg;
         if(!queueSendIM.empty())
             error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message: \"" << UsblParser::printBuffer(queueSendIM.front().buffer) << "\". Be sure to wait delivery of last IM.";
         else
             error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message. But I don't know from which message is this notification. Maybe from an old one or one that doesn't require ack notification.";
-        RTT::log(RTT::Error) << error_msg.str() << std::endl;
+        RTT::log(RTT::Error) << error_msg.str() << endl;
         return ;
     }
     else
@@ -315,7 +315,7 @@ void Task::processNotification(NotificationInfo const &notification)
 
 void Task::processParticularNotification(NotificationInfo const &notification)
 {
-    RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+    RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << endl;
 }
 
 MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &notification)
@@ -340,10 +340,10 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
         message_status.status = FAILED;
         counter_message_failed++;
 
-        std::stringstream error_msg;
+        stringstream error_msg;
         error_msg << "Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for Instant Message: \""
                 << UsblParser::printBuffer(message_status.sendIm.buffer) << "\".";
-        RTT::log(RTT::Error) << error_msg.str() << std::endl;
+        RTT::log(RTT::Error) << error_msg.str() << endl;
     }
     else
     {
@@ -373,7 +373,7 @@ MessageStatus Task::checkMessageStatus()
         if(base::Time::now() - last_im_sent > _timeout_delivery_report.get())
         {
             exception(MISSING_DELIVERY_REPORT);
-            std::runtime_error("Timeout while wait for a delivery report.");
+            runtime_error("Timeout while wait for a delivery report.");
         }
     }
     /**
@@ -394,9 +394,9 @@ MessageStatus Task::updateMessageStatusForNonAck(SendIM const& non_ack_required_
     return message_status;
 }
 
-std::string Task::getStringOfSettings(DeviceSettings settings)
+string Task::getStringOfSettings(DeviceSettings settings)
 {
-    std::stringstream text;
+    stringstream text;
     text << "Low Gain: " << (settings.lowGain?"true":"false") << endl << "Carrier Waveform ID: " << settings.carrierWaveformId << endl
             << "Local Address: " << settings.localAddress << endl << "Remote Address: " << settings.remoteAddress << endl
             << "Highest Address: " << settings.highestAddress << endl << "Cluster Size: " << settings.clusterSize << endl
@@ -412,9 +412,9 @@ std::string Task::getStringOfSettings(DeviceSettings settings)
 }
 
 // Get settings in string for log purpose
-std::string Task::getStringOfSettings(DeviceSettings settings, SourceLevel source_level, bool source_level_control)
+string Task::getStringOfSettings(DeviceSettings settings, SourceLevel source_level, bool source_level_control)
 {
-    std::stringstream text;
+    stringstream text;
     text << "Source Level: " << source_level << endl << "Source Level Control: " << (source_level_control?"true":"false") << endl
             << getStringOfSettings(settings);
     return text.str();
@@ -518,7 +518,7 @@ void Task::sendOneRawData(void)
     }
     else
     {
-        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device can not send raw_data in COMMAND mode. Be sure to switch device to DATA mode" << std::endl;
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device can not send raw_data in COMMAND mode. Be sure to switch device to DATA mode" << endl;
         // Pop packet or let it get full and go to exception??
         // Pop it by now. If it's on COMMAND mode it's known raw packet won't be transmitted and make no reason to delivery a old raw packet if it switch back to DATA.
         queueSendRawPacket.pop();
@@ -548,7 +548,7 @@ MessageStatus Task::addStatisticCounters( MessageStatus const& message_status)
     return status;
 }
 
-bool Task::waitIMAck(std::queue<SendIM> const& queue_im)
+bool Task::waitIMAck(queue<SendIM> const& queue_im)
 {
     if( queue_im.empty())
         return false;

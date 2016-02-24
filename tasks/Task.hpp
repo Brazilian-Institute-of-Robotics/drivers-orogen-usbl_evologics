@@ -32,12 +32,12 @@ namespace usbl_evologics {
 	    boost::shared_ptr<Driver>  driver;
 
 	    // Queue of Instant Messages to be transmitted to remote device.
-	    std::queue<SendIM> queueSendIM;
+	    queue<SendIM> queueSendIM;
 	    // Arbitrarily defining a max size for queueSendIM.
 	    static const size_t MAX_QUEUE_MSG_SIZE = 50;
 
 	    // Queue of Packets to be transmitted to remote device.
-	    std::queue<iodrivers_base::RawPacket> queueSendRawPacket;
+	    queue<iodrivers_base::RawPacket> queueSendRawPacket;
 	    // Arbitrarily defining a max size for queueSendRawPacket.
 	    static const size_t MAX_QUEUE_RAW_PACKET_SIZE = 50;
 
@@ -187,7 +187,7 @@ namespace usbl_evologics {
          *  Exception if found a "+++" in raw_data_input
          *  @param raw_data_in data that goes to local device and can not have a <+++ATcommand> on it.
          */
-        void filterRawData( std::vector<uint8_t> const & raw_data_in);
+        void filterRawData( vector<uint8_t> const & raw_data_in);
 
         /** Process notification
          *
@@ -231,7 +231,7 @@ namespace usbl_evologics {
          * @param settings of device
          * @return string with setting information
          */
-        std::string getStringOfSettings(DeviceSettings settings);
+        string getStringOfSettings(DeviceSettings settings);
 
         /** Get settings in string for log purpose
          *
@@ -240,7 +240,7 @@ namespace usbl_evologics {
          * @param source_level_control
          * @return string with setting information
          */
-        std::string getStringOfSettings(DeviceSettings settings, SourceLevel source_level, bool source_level_control);
+        string getStringOfSettings(DeviceSettings settings, SourceLevel source_level, bool source_level_control);
 
         /** Dynamically update source level
          *
@@ -317,7 +317,7 @@ namespace usbl_evologics {
          *  TODO other param should be necessary.
          *  @return true if first element in queue expect ack
          */
-        bool waitIMAck(std::queue<SendIM> const& queue_im);
+        bool waitIMAck(queue<SendIM> const& queue_im);
     };
 }
 

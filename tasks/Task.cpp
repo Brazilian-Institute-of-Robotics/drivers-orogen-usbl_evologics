@@ -154,6 +154,7 @@ bool Task::startHook()
         return false;
 
     last_status = base::Time::now();
+    driver->resetDevice(SEND_BUFFER);
 
     cout << "USBL working" << endl;
 
@@ -219,6 +220,7 @@ void Task::errorHook()
 }
 void Task::stopHook()
 {
+    driver->resetDevice(SEND_BUFFER);
     TaskBase::stopHook();
 }
 void Task::cleanupHook()

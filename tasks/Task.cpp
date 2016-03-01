@@ -227,8 +227,6 @@ void Task::stopHook()
 }
 void Task::cleanupHook()
 {
-    TaskBase::cleanupHook();
-
     //Make sure to set the device to its default operational mode, DATA.
     if(driver->getMode() == COMMAND)
         driver->switchToDataMode();
@@ -245,6 +243,8 @@ void Task::cleanupHook()
     // Clean queueSendRawPacket
     while(!queueSendRawPacket.empty())
         queueSendRawPacket.pop();
+
+    TaskBase::cleanupHook();
 }
 void Task::processIO()
 {

@@ -524,6 +524,7 @@ void Task::sendOneRawData(void)
     if(driver->getMode() == DATA)
     {
         filterRawData(queueSendRawPacket.front().data);
+        driver->sendRawData(queueSendRawPacket.front().data);
         counter_raw_data_sent += queueSendRawPacket.front().data.size();
         queueSendRawPacket.pop();
     }

@@ -240,6 +240,8 @@ void Task::cleanupHook()
     // Clean queueSendIM
     while(!queueSendIM.empty())
         queueSendIM.pop();
+    while(!queuePendingIMs.empty())
+        queuePendingIMs.pop();
     // Clean queueSendRawPacket
     while(!queueSendRawPacket.empty())
         queueSendRawPacket.pop();
@@ -306,8 +308,8 @@ void Task::processNotification(NotificationInfo const &notification)
     else if(notification.notification == CANCELED_IM)
     {
         stringstream error_msg;
-        if(!queueSendIM.empty())
-            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message: \"" << UsblParser::printBuffer(queueSendIM.front().buffer) << "\". Be sure to wait delivery of last IM.";
+        if(!queuePendingIMs.empty())
+            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message: \"" << UsblParser::printBuffer(queuePendingIMs.front().buffer) << "\". Be sure to wait delivery of last IM.";
         else
             error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message. But I don't know from which message is this notification. Maybe from an old one or one that doesn't require ack notification.";
         RTT::log(RTT::Error) << error_msg.str() << endl;
@@ -328,16 +330,16 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
         throw runtime_error("Usbl_evologics Task.cpp. processDeliveryReportNotification did not receive a delivery report.");
 
     // Check in queue if a Ack is expected.
-    if( !waitIMAck(queueSendIM))
+    if( !waitIMAck(queuePendingIMs))
     {
         exception(OLD_ACK);
-        runtime_error("Usbl_evologics Task.cpp. Device received a delivered acknowledgment for an old Instant Message");
+        throw runtime_error("Usbl_evologics Task.cpp. Device received a delivered acknowledgment for an old Instant Message");
     }
 
     // Pop message from queue and confirm the report receipt.
     MessageStatus message_status;
-    message_status.sendIm = queueSendIM.front();
-    queueSendIM.pop();
+    message_status.sendIm = queuePendingIMs.front();
+    queuePendingIMs.pop();
 
     if(!driver->getIMDeliveryReport(notification.buffer))
     {
@@ -345,7 +347,7 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
         counter_message_failed++;
 
         stringstream error_msg;
-        error_msg << "Usbl_evologics Task.cpp. Device did NOT receive a delivered acknowledgment for Instant Message: \""
+        error_msg << "Usbl_evologics Task.cpp. Device reported a failed delivery for Instant Message: \""
                 << UsblParser::printBuffer(message_status.sendIm.buffer) << "\".";
         RTT::log(RTT::Error) << error_msg.str() << endl;
     }
@@ -366,18 +368,18 @@ MessageStatus Task::checkMessageStatus()
     if(message_status.status == PENDING)
     {
         // Check in queue if a Ack is expected.
-        if( !waitIMAck(queueSendIM))
+        if( queuePendingIMs.empty() )
         {
             exception(OLD_ACK);
-            runtime_error("Usbl_evologics Task.cpp. Device is waiting an acknowledgment for an old Instant Message");
+            throw runtime_error("Usbl_evologics Task.cpp. Device is waiting an acknowledgment for an old Instant Message");
         }
 
-        message_status.sendIm = queueSendIM.front();
+        message_status.sendIm = queuePendingIMs.front();
         // Check for the last delivery report.
         if(base::Time::now() - last_im_sent > _timeout_delivery_report.get())
         {
             exception(MISSING_DELIVERY_REPORT);
-            runtime_error("Timeout while wait for a delivery report.");
+            throw runtime_error("Timeout while wait for a delivery report.");
         }
     }
     /**
@@ -493,20 +495,25 @@ void Task::sendOneIM(void)
     //Check if queue is not empty
     if(queueSendIM.empty())
         return;
+
+    SendIM im(queueSendIM.front());
     // Send latest message in queue.
-    driver->sendInstantMessage(queueSendIM.front());
+    driver->sendInstantMessage(im);
+    queueSendIM.pop();
     //Add counter
     counter_message_sent++;
 
     // Starting count for the timeout_delivery_report
-    if(queueSendIM.front().deliveryReport)
+    if(im.deliveryReport)
+    {
+	queuePendingIMs.push(im);
         last_im_sent = base::Time::now();
+    }
     // If no delivery report is requested, pop message from queue.
     else
     {
         // Register that the non_ack_required_IM was delivered.
-        _message_status.write( addStatisticCounters( updateMessageStatusForNonAck(queueSendIM.front())));
-        queueSendIM.pop();
+        _message_status.write( addStatisticCounters( updateMessageStatusForNonAck(im)));
     }
 }
 

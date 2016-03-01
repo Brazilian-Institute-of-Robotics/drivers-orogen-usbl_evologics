@@ -32,6 +32,8 @@ namespace usbl_evologics {
 	    boost::shared_ptr<Driver>  driver;
 
 	    // Queue of Instant Messages to be transmitted to remote device.
+	    queue<SendIM> queuePendingIMs;
+	    // Queue of Instant Messages to be transmitted to remote device.
 	    queue<SendIM> queueSendIM;
 	    // Arbitrarily defining a max size for queueSendIM.
 	    static const size_t MAX_QUEUE_MSG_SIZE = 50;

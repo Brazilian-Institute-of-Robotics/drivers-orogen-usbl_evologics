@@ -107,6 +107,8 @@ bool Task::configureHook()
     else if (_io_port.get().find("serial") != string::npos)
         driver->setInterface(SERIAL);
 
+    driver->resetDevice(SEND_BUFFER, true);
+
      // Set System Time for current Time.
     driver->setSystemTimeNow();
 

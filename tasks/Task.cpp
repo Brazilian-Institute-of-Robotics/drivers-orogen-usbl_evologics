@@ -173,6 +173,10 @@ void Task::updateHook()
        _acoustic_connection.write(driver->getConnectionStatus());
        _acoustic_channel.write( addStatisticCounters( driver->getAcousticChannelparameters()));
        _message_status.write( addStatisticCounters( checkMessageStatus()));
+
+       // Update Source Level in dynamic property in case the Source Level Control is set (local Source Level establish by remote device).
+       if(driver->getSourceLevelControl())
+           _source_level.set(driver->getSourceLevel());
    }
 
 

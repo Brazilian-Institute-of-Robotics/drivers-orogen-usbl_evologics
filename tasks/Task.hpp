@@ -31,29 +31,31 @@ namespace usbl_evologics {
 
 	    boost::shared_ptr<Driver>  driver;
 
-	    std::queue<SendIM> queueSendIM;
+	    // Queue of Instant Messages to be transmitted to remote device.
+	    queue<SendIM> queuePendingIMs;
+	    // Queue of Instant Messages to be transmitted to remote device.
+	    queue<SendIM> queueSendIM;
 	    // Arbitrarily defining a max size for queueSendIM.
 	    static const size_t MAX_QUEUE_MSG_SIZE = 50;
-	    SendIM last_send_IM;
 
+	    // Queue of Packets to be transmitted to remote device.
+	    queue<iodrivers_base::RawPacket> queueSendRawPacket;
+	    // Arbitrarily defining a max size for queueSendRawPacket.
+	    static const size_t MAX_QUEUE_RAW_PACKET_SIZE = 50;
 
-	    // Retries counter of instant message.
-	    int im_retries_counter;
 	    base::Time last_im_sent;
-	    base::Time timeout_delivery_report;
-
-	    MessageStatus message_status;
 
 	    // Raw data counters
-	    long long unsigned int sent_raw_data_counter;
-	    long long unsigned int received_raw_data_counter;
+	    long long unsigned int counter_raw_data_sent;
+	    long long unsigned int counter_raw_data_received;
 
-	    // Manage the moment of sending new messages.
-	    bool im_wait_ack;
+	    // Instant Message counters
+	    long long unsigned int counter_message_delivered;
+	    long long unsigned int counter_message_failed;
+	    long long unsigned int counter_message_received;
+	    long long unsigned int counter_message_sent;
 
-	    AcousticConnection acoustic_connection;
-
-	    base::Time lastStatus;
+	    base::Time last_status;
 
 	    DeviceSettings current_settings;
 
@@ -181,20 +183,13 @@ namespace usbl_evologics {
          */
         void resetCounters(bool drop_counter, bool overflow_counter);
 
-        /** Verify if free transmission buffer is big enough to support message.
-         *
-         * @param buffer to be transmitted to remote device.
-         * @param acoustic_connection contains amount of free buffer.
-         */
-        void checkFreeBuffer(std::string const &buffer, AcousticConnection const &acoustic_connection);
-
         /** Filter possible <+++ATcommand> in raw_data_input
          *
          *  Do not let raw_data_input mess up with connection/device.
          *  Exception if found a "+++" in raw_data_input
          *  @param raw_data_in data that goes to local device and can not have a <+++ATcommand> on it.
          */
-        void filterRawData( std::string const & raw_data_in);
+        void filterRawData( vector<uint8_t> const & raw_data_in);
 
         /** Process notification
          *
@@ -219,12 +214,26 @@ namespace usbl_evologics {
          */
         MessageStatus processDeliveryReportNotification(NotificationInfo const &notification);
 
+        /** Check actual message status
+         *
+         * Verify if there is a message been delivered.
+         * @return MessageStatus to be output.
+         */
+        MessageStatus checkMessageStatus(void);
+
+        /** Update message status for message that doesn't require ack
+         *
+         * @param non_ack_required message
+         * @return MessageStatus to be output.
+         */
+        MessageStatus updateMessageStatusForNonAck(SendIM const& non_ack_required_im);
+
         /** Get settings in string for log purpose
          *
          * @param settings of device
          * @return string with setting information
          */
-        std::string getStringOfSettings(DeviceSettings settings);
+        string getStringOfSettings(DeviceSettings settings);
 
         /** Get settings in string for log purpose
          *
@@ -233,7 +242,7 @@ namespace usbl_evologics {
          * @param source_level_control
          * @return string with setting information
          */
-        std::string getStringOfSettings(DeviceSettings settings, SourceLevel source_level, bool source_level_control);
+        string getStringOfSettings(DeviceSettings settings, SourceLevel source_level, bool source_level_control);
 
         /** Dynamically update source level
          *
@@ -248,6 +257,69 @@ namespace usbl_evologics {
          */
         bool setSource_level_control(bool value);
 
+        /** Enqueue a Raw packet to be transmitted to remote device
+         *
+         *  Check the size of the free transmission buffer in usbl before send the packet and the size of the queue.
+         * @param RawPacket to be transmitted.
+         * @param transmission buffer size
+         */
+        void enqueueSendRawPacket(iodrivers_base::RawPacket const &raw_packet, DeviceSettings const &pool_size);
+
+        /** Enqueue a Instant Message to be transmitted to remote device
+         *
+         *  Check the size of the free transmission buffer in usbl before send the IM and the size of the queue.
+         * @param Instant Message to be transmitted.
+         * @param transmission buffer size
+         */
+        void enqueueSendIM(SendIM const &sendIM);
+
+        /** Check if transmission of IM is available
+         *
+         * @para acoustic_connection. Connection status and free buffer
+         * @return bool
+         */
+        bool isSendIMAvbl( AcousticConnection const& acoustic_connection);
+
+        /** Check if transmission of Raw Data is available
+         *
+         * @para acoustic_connection. Connection status and free buffer
+         * @retunr bool
+         */
+        bool isSendRawDataAvbl( AcousticConnection const& acoustic_connection);
+
+        /** Send Instant Message to usbl
+         *
+         *  Get Instant Message from queue and transmit it
+         */
+        void sendOneIM(void);
+
+        /** Send Raw Data to usbl
+         *
+         *  Get Raw Data from queue and transmit it
+         */
+        void sendOneRawData(void);
+
+        /** Include raw_data counters on acoustic_connection
+         *
+         * @param acoustic_connection without raw_data counters
+         * @return acoustic_connection with raw_data counters
+         */
+        AcousticChannel addStatisticCounters( AcousticChannel const& acoustic_connection);
+
+        /** Include message counters on message_status
+         *
+         * @param message_status without message counters
+         * @return message_status with message counters
+         */
+        MessageStatus addStatisticCounters( MessageStatus const& message_status);
+
+        /** Check if an ack of a message is expected
+         *
+         *  @param queue_im.
+         *  TODO other param should be necessary.
+         *  @return true if first element in queue expect ack
+         */
+        bool waitIMAck(queue<SendIM> const& queue_im);
     };
 }
 

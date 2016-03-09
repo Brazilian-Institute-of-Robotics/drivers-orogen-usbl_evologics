@@ -3,6 +3,7 @@
 #include "Task.hpp"
 #include <rtt/extras/FileDescriptorActivity.hpp>
 
+using namespace std;
 using namespace usbl_evologics;
 
 Task::Task(std::string const& name)

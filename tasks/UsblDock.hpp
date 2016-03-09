@@ -104,6 +104,15 @@ namespace usbl_evologics {
          */
         void cleanupHook();
 
+        /** Include frames to pose data
+         *
+         *  @param pose
+         *  @param source_frame
+         *  @param target_frame
+         *  @return pose with frames
+         */
+        base::samples::RigidBodyState addFrames(base::samples::RigidBodyState const& pose, std::string const& source_frame, std::string const& target_frame);
+
         virtual void processParticularNotification(NotificationInfo const &notification);
 
     };

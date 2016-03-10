@@ -70,8 +70,10 @@ void UsblDock::cleanupHook()
 void UsblDock::processParticularNotification(NotificationInfo const &notification)
 {
     if(notification.notification == USBLLONG)
-    {
-        _position_samples.write(addFrames(driver->getPose(driver->getPose(notification.buffer)), _source_frame.get(), _target_frame.get()));
+    {   base::samples::RigidBodyState pose = driver->getPose(driver->getPose(notification.buffer));
+        pose.sourceFrame = _source_frame.get();
+        pose.targetFrame = _target_frame.get();
+        _position_samples.write(pose);
         return ;
     }
     else if(notification.notification == USBLANGLE)
@@ -84,12 +86,4 @@ void UsblDock::processParticularNotification(NotificationInfo const &notificatio
         RTT::log(RTT::Error) << "Usbl_evologics UsblDock.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
         return ;
     }
-}
-
-base::samples::RigidBodyState UsblDock::addFrames(base::samples::RigidBodyState const& pose, std::string const& source_frame, std::string const& target_frame)
-{
-    base::samples::RigidBodyState pose_frame = pose;
-    pose_frame.targetFrame = target_frame;
-    pose_frame.sourceFrame = source_frame;
-    return pose_frame;
 }

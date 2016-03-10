@@ -104,6 +104,11 @@ task_context "UsblDock" do
    subclasses "Task"
    needs_configuration 
    
+   # Source frame of position_sample.
+   property "source_frame", "std/string", "auv"
+   # Target frame of position_sample.
+   property "target_frame", "std/string", "world_usbl"
+
    # Ethernet Connection   
 
    ###################################

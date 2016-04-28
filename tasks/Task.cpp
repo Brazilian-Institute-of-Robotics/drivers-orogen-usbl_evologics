@@ -97,21 +97,26 @@ bool Task::configureHook()
     driver.reset(new Driver());
     if (!_io_port.get().empty())
         driver->openURI(_io_port.get());
+    std::cout << "openURI" << std::endl;
     setDriver(driver.get());
+    std::cout << "setDriver" << std::endl;
 
     if (! TaskBase::configureHook())
         return false;
 
     // Set interface
     if(_io_port.get().find("tcp") != string::npos)
-        driver->setInterface(ETHERNET);
+        driver->setInterface(SERIAL);
     else if (_io_port.get().find("serial") != string::npos)
         driver->setInterface(SERIAL);
+    std::cout << "setInterface" << std::endl;
 
     driver->resetDevice(SEND_BUFFER, true);
+    std::cout << "resetDevice" << std::endl;
 
      // Set System Time for current Time.
     driver->setSystemTimeNow();
+    std::cout << "setTimeNow" << std::endl;
 
     //Set operation mode. Default DATA mode.
     if(driver->getMode() != _mode.get())

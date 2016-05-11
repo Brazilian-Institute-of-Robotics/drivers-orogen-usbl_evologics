@@ -109,10 +109,7 @@ bool Task::configureHook()
         return false;
 
     // Set interface
-    if(_io_port.get().find("tcp") != string::npos)
-        driver->setInterface(ETHERNET);
-    else if (_io_port.get().find("serial") != string::npos)
-        driver->setInterface(SERIAL);
+    driver->setInterface(_interface.get());
 
     driver->resetDevice(SEND_BUFFER, true);
 

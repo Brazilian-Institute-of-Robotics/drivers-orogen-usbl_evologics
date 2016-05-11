@@ -29,14 +29,11 @@ bool UsblDock::configureHook()
     if (! UsblDockBase::configureHook())
         return false;
 
-    if (!_io_port.get().empty())
+    if(_interface.get() != ETHERNET)
     {
-        if(_io_port.get().find("tcp") == std::string::npos)
-        {
-            RTT::log(RTT::Error) << "Usbl_evologics UsblDock.cpp. WRONG INTERFACE, define tcp connection in _io_port" << std::endl;
-            exception(WRONG_INTERFACE);
-            return false;
-        }
+        RTT::log(RTT::Error) << "Usbl_evologics UsblDock.cpp. WRONG INTERFACE, define tcp connection in _interface" << std::endl;
+        exception(WRONG_INTERFACE);
+        return false;
     }
 
     // Just to be sure the usbl will output position samples.

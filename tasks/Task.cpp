@@ -106,7 +106,7 @@ bool Task::configureHook()
 
     // Set interface
     if(_io_port.get().find("tcp") != string::npos)
-        driver->setInterface(SERIAL);
+        driver->setInterface(ETHERNET);
     else if (_io_port.get().find("serial") != string::npos)
         driver->setInterface(SERIAL);
     std::cout << "setInterface" << std::endl;

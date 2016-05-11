@@ -29,15 +29,15 @@ bool UsblAUV::configureHook()
     if (! UsblAUVBase::configureHook())
         return false;
 
-//    if (!_io_port.get().empty())
-//    {
-//        if(_io_port.get().find("serial") == std::string::npos)
-//        {
-//            RTT::log(RTT::Error) << "Usbl_evologics UsblAUV.cpp. WRONG INTERFACE, define serial connection in _io_port" << std::endl;
-//            exception(WRONG_INTERFACE);
-//            return false;
-//        }
-//    }
+    if (!_io_port.get().empty())
+    {
+        if(_io_port.get().find("serial") == std::string::npos)
+        {
+            RTT::log(RTT::Error) << "Usbl_evologics UsblAUV.cpp. WRONG INTERFACE, define serial connection in _io_port" << std::endl;
+            exception(WRONG_INTERFACE);
+            return false;
+        }
+    }
     return true;
 }
 bool UsblAUV::startHook()

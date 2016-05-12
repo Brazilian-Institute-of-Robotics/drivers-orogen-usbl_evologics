@@ -42,14 +42,15 @@ Task::~Task()
 {
 }
 
-bool Task::setSource_level(SourceLevel value)
+bool Task::setSource_level(::usbl_evologics::SourceLevel const & value)
 {
+
     if(driver->getSourceLevel() != value)
     {
         driver->setSourceLevel(value);
         RTT::log(RTT::Info) << "USBL's source level change to \"" << value << "\"" << endl;
     }
- return(usbl_evologics::TaskBase::setSource_level(value));
+    return(usbl_evologics::TaskBase::setSource_level(value));
 }
 
 bool Task::setSource_level_control(bool value)
@@ -59,7 +60,7 @@ bool Task::setSource_level_control(bool value)
         driver->setSourceLevelControl(value);
         RTT::log(RTT::Info) << "USBL's source level control change to \"" << (value?"true":"false") << "\"" << endl;
     }
- return(usbl_evologics::TaskBase::setSource_level_control(value));
+    return(usbl_evologics::TaskBase::setSource_level_control(value));
 }
 
 // Reset Device to stored settings and restart it.

@@ -219,7 +219,7 @@ void Task::updateHook()
    {
        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << endl;
        exception(DEVICE_INTERNAL_ERROR);
-       return;
+       throw runtime_error("Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE");
    }
 }
 void Task::errorHook()
@@ -437,14 +437,24 @@ void Task::enqueueSendRawPacket(iodrivers_base::RawPacket const &raw_packet, Dev
     // Considering just the first and actual channel. Let a minimal free buffer for delivery an Instant Message.
     if(raw_packet.data.size() > (pool_size.poolSize[0] - MAX_MSG_SIZE))
     {
-        exception(HUGE_RAW_DATA_INPUT);
+        if(state() != HUGE_RAW_DATA_INPUT)
+            state(HUGE_RAW_DATA_INPUT);
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. HUGE_RAW_DATA_INPUT. RawPacket discharged: \""
+                             << UsblParser::printBuffer(raw_packet.data)
+                             << "\"" << endl;
         return;
     }
     if(queueSendRawPacket.size() > MAX_QUEUE_RAW_PACKET_SIZE)
     {
-        exception(FULL_RAW_DATA_QUEUE);
+        if(state() != FULL_RAW_DATA_QUEUE)
+            state(FULL_RAW_DATA_QUEUE);
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. FULL_RAW_DATA_QUEUE. RawPacket discharged: \""
+                             << UsblParser::printBuffer(raw_packet.data)
+                             << "\"" << endl;
         return;
     }
+    if(state() != RUNNING)
+        state(RUNNING);
     queueSendRawPacket.push(raw_packet);
 }
 
@@ -453,15 +463,25 @@ void Task::enqueueSendIM(SendIM const &sendIM)
     // Check size of Message. It can't be bigger than MAX_MSG_SIZE, according device's manual.
      if(sendIM.buffer.size() > MAX_MSG_SIZE)
      {
-         exception(HUGE_INSTANT_MESSAGE);
+         if(state() != HUGE_INSTANT_MESSAGE)
+             state(HUGE_INSTANT_MESSAGE);
+         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. HUGE_INSTANT_MESSAGE. Message discharged: \""
+                              << UsblParser::printBuffer(sendIM.buffer)
+                              << "\"" << endl;
          return;
      }
      // Check queue size.
      if(queueSendIM.size() > MAX_QUEUE_MSG_SIZE)
      {
-         exception(FULL_IM_QUEUE);
+         if(state() != FULL_IM_QUEUE)
+             state(FULL_IM_QUEUE);
+         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. FULL_IM_QUEUE. Message discharged: \""
+                              << UsblParser::printBuffer(sendIM.buffer)
+                              << "\"" << endl;
          return;
      }
+     if(state() != RUNNING)
+         state(RUNNING);
      queueSendIM.push(sendIM);
 }
 

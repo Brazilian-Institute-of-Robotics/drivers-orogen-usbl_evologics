@@ -36,7 +36,7 @@ namespace usbl_evologics {
 	    // Queue of Instant Messages to be transmitted to remote device.
 	    std::queue<SendIM> queueSendIM;
 	    // Arbitrarily defining a max size for queueSendIM.
-	    static const size_t MAX_QUEUE_MSG_SIZE = 50;
+	    static const size_t MAX_QUEUE_MSG_SIZE = 100;
 
 	    // Queue of Packets to be transmitted to remote device.
 	    std::queue<iodrivers_base::RawPacket> queueSendRawPacket;

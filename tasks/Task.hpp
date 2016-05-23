@@ -48,6 +48,7 @@ namespace usbl_evologics {
 	    // Raw data counters
 	    long long unsigned int counter_raw_data_sent;
 	    long long unsigned int counter_raw_data_received;
+	    long long unsigned int counter_raw_data_dropped;
 
 	    // Instant Message counters
 	    long long unsigned int counter_message_delivered;
@@ -328,6 +329,13 @@ namespace usbl_evologics {
          * @param reason to be dropped.
          */
         void outputDroppedIM(SendIM const& dropped_im, std::string const &reason);
+
+        /** Output a dropped Raw Data
+         *
+         * @param dropped_raw, Raw Data dropped
+         * @param reason to be dropped.
+         */
+        void outputDroppedData(iodrivers_base::RawPacket const& dropped_data, std::string const &reason);
     };
 }
 

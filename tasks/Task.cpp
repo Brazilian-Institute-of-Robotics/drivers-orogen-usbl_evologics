@@ -21,6 +21,7 @@ Task::Task(std::string const& name)
     // Initialize raw data counters
     counter_raw_data_sent = 0;
     counter_raw_data_received = 0;
+    counter_raw_data_dropped = 0;
 }
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
@@ -38,6 +39,7 @@ Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     // Initialize raw data counters
     counter_raw_data_sent = 0;
     counter_raw_data_received = 0;
+    counter_raw_data_dropped = 0;
 }
 
 Task::~Task()
@@ -444,6 +446,7 @@ void Task::enqueueSendRawPacket(iodrivers_base::RawPacket const &raw_packet, Dev
         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. HUGE_RAW_DATA_INPUT. RawPacket discharged: \""
                              << UsblParser::printBuffer(raw_packet.data)
                              << "\"" << endl;
+        outputDroppedData(raw_packet, "HUGE_RAW_DATA_INPUT");
         return;
     }
     if(queueSendRawPacket.size() > MAX_QUEUE_RAW_PACKET_SIZE)
@@ -453,6 +456,7 @@ void Task::enqueueSendRawPacket(iodrivers_base::RawPacket const &raw_packet, Dev
         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. FULL_RAW_DATA_QUEUE. RawPacket discharged: \""
                              << UsblParser::printBuffer(raw_packet.data)
                              << "\"" << endl;
+        outputDroppedData(raw_packet, "FULL_RAW_DATA_QUEUE");
         return;
     }
     if(state() != RUNNING)
@@ -608,4 +612,15 @@ void Task::outputDroppedIM(SendIM const& dropped_im, std::string const &reason)
     drop_im.reason = reason;
     drop_im.messageDropped = counter_message_dropped;
     _dropped_message.write(drop_im);
+}
+
+void Task::outputDroppedData(iodrivers_base::RawPacket const& dropped_data, std::string const &reason)
+{
+    counter_raw_data_dropped ++;
+    DroppedRawData drop_data;
+    drop_data.time = base::Time::now();
+    drop_data.droppedData = dropped_data;
+    drop_data.reason = reason;
+    drop_data.dataDropped = counter_raw_data_dropped;
+    _dropped_raw_data.write(drop_data);
 }

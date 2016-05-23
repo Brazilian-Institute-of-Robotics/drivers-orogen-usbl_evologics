@@ -76,6 +76,8 @@ task_context "Task" do
    output_port "message_status", "/usbl_evologics/MessageStatus"
    # Dropped message from driver. Those messages are not even send to usbl device
    output_port "dropped_message", "/usbl_evologics/DroppedMessages"
+   # Dropped raw data from driver. Those raw_data are not even send to usbl device
+   output_port "dropped_raw_data", "/usbl_evologics/DroppedRawData"
 
    ###################################
    ##   Operations

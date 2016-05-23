@@ -17,6 +17,7 @@ Task::Task(std::string const& name)
     counter_message_failed = 0;
     counter_message_received = 0;
     counter_message_sent = 0;
+    counter_message_dropped = 0;
     // Initialize raw data counters
     counter_raw_data_sent = 0;
     counter_raw_data_received = 0;
@@ -33,6 +34,7 @@ Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     counter_message_failed = 0;
     counter_message_received = 0;
     counter_message_sent = 0;
+    counter_message_dropped = 0;
     // Initialize raw data counters
     counter_raw_data_sent = 0;
     counter_raw_data_received = 0;
@@ -460,29 +462,42 @@ void Task::enqueueSendRawPacket(iodrivers_base::RawPacket const &raw_packet, Dev
 
 void Task::enqueueSendIM(SendIM const &sendIM)
 {
+    DroppedMessages dropped_im;
     // Check size of Message. It can't be bigger than MAX_MSG_SIZE, according device's manual.
-     if(sendIM.buffer.size() > MAX_MSG_SIZE)
-     {
-         if(state() != HUGE_INSTANT_MESSAGE)
-             state(HUGE_INSTANT_MESSAGE);
-         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. HUGE_INSTANT_MESSAGE. Message discharged: \""
-                              << UsblParser::printBuffer(sendIM.buffer)
-                              << "\"" << endl;
-         return;
-     }
-     // Check queue size.
-     if(queueSendIM.size() > MAX_QUEUE_MSG_SIZE)
-     {
-         if(state() != FULL_IM_QUEUE)
-             state(FULL_IM_QUEUE);
-         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. FULL_IM_QUEUE. Message discharged: \""
-                              << UsblParser::printBuffer(sendIM.buffer)
-                              << "\"" << endl;
-         return;
-     }
-     if(state() != RUNNING)
-         state(RUNNING);
-     queueSendIM.push(sendIM);
+    if(sendIM.buffer.size() > MAX_MSG_SIZE)
+    {
+        if(state() != HUGE_INSTANT_MESSAGE)
+            state(HUGE_INSTANT_MESSAGE);
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. HUGE_INSTANT_MESSAGE. Message discharged: \""
+                             << UsblParser::printBuffer(sendIM.buffer)
+                             << "\"" << endl;
+        counter_message_dropped ++;
+        dropped_im.time = base::Time::now();
+        dropped_im.droppedIm = sendIM;
+        dropped_im.reason = "HUGE_INSTANT_MESSAGE";
+        dropped_im.messageDropped = counter_message_dropped;
+        _dropped_message.write(dropped_im);
+        return;
+    }
+    // Check queue size.
+    if(queueSendIM.size() > MAX_QUEUE_MSG_SIZE)
+    {
+        if(state() != FULL_IM_QUEUE)
+            state(FULL_IM_QUEUE);
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. FULL_IM_QUEUE. Message discharged: \""
+                             << UsblParser::printBuffer(sendIM.buffer)
+                             << "\"" << endl;
+         counter_message_dropped ++;
+         dropped_im.time = base::Time::now();
+         dropped_im.droppedIm = sendIM;
+         dropped_im.reason = "FULL_IM_QUEUE";
+         dropped_im.messageDropped = counter_message_dropped;
+         _dropped_message.write(dropped_im);
+        return;
+    }
+    if(state() != RUNNING)
+        state(RUNNING);
+    queueSendIM.push(sendIM);
 }
 
 bool Task::isSendIMAvbl(AcousticConnection const& acoustic_connection)

@@ -103,6 +103,7 @@ bool Task::configureHook()
     if (!_io_port.get().empty())
         driver->openURI(_io_port.get());
     setDriver(driver.get());
+    driver->clear();
 
     if (! TaskBase::configureHook())
         return false;

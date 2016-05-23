@@ -321,6 +321,13 @@ namespace usbl_evologics {
          *  @return true if first element in queue expect ack
          */
         bool waitIMAck(std::queue<SendIM> const& queue_im);
+
+        /** Output a dropped instant Message
+         *
+         * @param dropped_im, Instant Message dropped
+         * @param reason to be dropped.
+         */
+        void outputDroppedIM(SendIM const& dropped_im, std::string const &reason);
     };
 }
 

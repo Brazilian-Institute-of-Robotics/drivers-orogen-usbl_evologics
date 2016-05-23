@@ -462,7 +462,6 @@ void Task::enqueueSendRawPacket(iodrivers_base::RawPacket const &raw_packet, Dev
 
 void Task::enqueueSendIM(SendIM const &sendIM)
 {
-    DroppedMessages dropped_im;
     // Check size of Message. It can't be bigger than MAX_MSG_SIZE, according device's manual.
     if(sendIM.buffer.size() > MAX_MSG_SIZE)
     {
@@ -471,12 +470,7 @@ void Task::enqueueSendIM(SendIM const &sendIM)
         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. HUGE_INSTANT_MESSAGE. Message discharged: \""
                              << UsblParser::printBuffer(sendIM.buffer)
                              << "\"" << endl;
-        counter_message_dropped ++;
-        dropped_im.time = base::Time::now();
-        dropped_im.droppedIm = sendIM;
-        dropped_im.reason = "HUGE_INSTANT_MESSAGE";
-        dropped_im.messageDropped = counter_message_dropped;
-        _dropped_message.write(dropped_im);
+        outputDroppedIM(sendIM, " HUGE_INSTANT_MESSAGE");
         return;
     }
     // Check queue size.
@@ -487,12 +481,7 @@ void Task::enqueueSendIM(SendIM const &sendIM)
         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. FULL_IM_QUEUE. Message discharged: \""
                              << UsblParser::printBuffer(sendIM.buffer)
                              << "\"" << endl;
-         counter_message_dropped ++;
-         dropped_im.time = base::Time::now();
-         dropped_im.droppedIm = sendIM;
-         dropped_im.reason = "FULL_IM_QUEUE";
-         dropped_im.messageDropped = counter_message_dropped;
-         _dropped_message.write(dropped_im);
+        outputDroppedIM(sendIM, "FULL_IM_QUEUE");
         return;
     }
     if(state() != RUNNING)
@@ -608,4 +597,15 @@ bool Task::waitIMAck(queue<SendIM> const& queue_im)
     else if( !queue_im.front().deliveryReport)
         return false;
     return true;
+}
+
+void Task::outputDroppedIM(SendIM const& dropped_im, std::string const &reason)
+{
+    counter_message_dropped ++;
+    DroppedMessages drop_im;
+    drop_im.time = base::Time::now();
+    drop_im.droppedIm = dropped_im;
+    drop_im.reason = reason;
+    drop_im.messageDropped = counter_message_dropped;
+    _dropped_message.write(drop_im);
 }

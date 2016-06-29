@@ -17,9 +17,11 @@ Task::Task(std::string const& name)
     counter_message_failed = 0;
     counter_message_received = 0;
     counter_message_sent = 0;
+    counter_message_dropped = 0;
     // Initialize raw data counters
     counter_raw_data_sent = 0;
     counter_raw_data_received = 0;
+    counter_raw_data_dropped = 0;
 }
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
@@ -33,23 +35,26 @@ Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     counter_message_failed = 0;
     counter_message_received = 0;
     counter_message_sent = 0;
+    counter_message_dropped = 0;
     // Initialize raw data counters
     counter_raw_data_sent = 0;
     counter_raw_data_received = 0;
+    counter_raw_data_dropped = 0;
 }
 
 Task::~Task()
 {
 }
 
-bool Task::setSource_level(SourceLevel value)
+bool Task::setSource_level(::usbl_evologics::SourceLevel const & value)
 {
+
     if(driver->getSourceLevel() != value)
     {
         driver->setSourceLevel(value);
         RTT::log(RTT::Info) << "USBL's source level change to \"" << value << "\"" << endl;
     }
- return(usbl_evologics::TaskBase::setSource_level(value));
+    return(usbl_evologics::TaskBase::setSource_level(value));
 }
 
 bool Task::setSource_level_control(bool value)
@@ -59,7 +64,7 @@ bool Task::setSource_level_control(bool value)
         driver->setSourceLevelControl(value);
         RTT::log(RTT::Info) << "USBL's source level control change to \"" << (value?"true":"false") << "\"" << endl;
     }
- return(usbl_evologics::TaskBase::setSource_level_control(value));
+    return(usbl_evologics::TaskBase::setSource_level_control(value));
 }
 
 // Reset Device to stored settings and restart it.
@@ -98,6 +103,7 @@ bool Task::configureHook()
     if (!_io_port.get().empty())
         driver->openURI(_io_port.get());
     setDriver(driver.get());
+    driver->clear();
 
     if (! TaskBase::configureHook())
         return false;
@@ -218,7 +224,7 @@ void Task::updateHook()
    {
        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << endl;
        exception(DEVICE_INTERNAL_ERROR);
-       return;
+       throw runtime_error("Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE");
    }
 }
 void Task::errorHook()
@@ -436,32 +442,56 @@ void Task::enqueueSendRawPacket(iodrivers_base::RawPacket const &raw_packet, Dev
     // Considering just the first and actual channel. Let a minimal free buffer for delivery an Instant Message.
     if(raw_packet.data.size() > (pool_size.poolSize[0] - MAX_MSG_SIZE))
     {
-        exception(HUGE_RAW_DATA_INPUT);
+        if(state() != HUGE_RAW_DATA_INPUT)
+            state(HUGE_RAW_DATA_INPUT);
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. HUGE_RAW_DATA_INPUT. RawPacket discharged: \""
+                             << UsblParser::printBuffer(raw_packet.data)
+                             << "\"" << endl;
+        outputDroppedData(raw_packet, "HUGE_RAW_DATA_INPUT");
         return;
     }
     if(queueSendRawPacket.size() > MAX_QUEUE_RAW_PACKET_SIZE)
     {
-        exception(FULL_RAW_DATA_QUEUE);
+        if(state() != FULL_RAW_DATA_QUEUE)
+            state(FULL_RAW_DATA_QUEUE);
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. FULL_RAW_DATA_QUEUE. RawPacket discharged: \""
+                             << UsblParser::printBuffer(raw_packet.data)
+                             << "\"" << endl;
+        outputDroppedData(raw_packet, "FULL_RAW_DATA_QUEUE");
         return;
     }
+    if(state() != RUNNING)
+        state(RUNNING);
     queueSendRawPacket.push(raw_packet);
 }
 
 void Task::enqueueSendIM(SendIM const &sendIM)
 {
     // Check size of Message. It can't be bigger than MAX_MSG_SIZE, according device's manual.
-     if(sendIM.buffer.size() > MAX_MSG_SIZE)
-     {
-         exception(HUGE_INSTANT_MESSAGE);
-         return;
-     }
-     // Check queue size.
-     if(queueSendIM.size() > MAX_QUEUE_MSG_SIZE)
-     {
-         exception(FULL_IM_QUEUE);
-         return;
-     }
-     queueSendIM.push(sendIM);
+    if(sendIM.buffer.size() > MAX_MSG_SIZE)
+    {
+        if(state() != HUGE_INSTANT_MESSAGE)
+            state(HUGE_INSTANT_MESSAGE);
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. HUGE_INSTANT_MESSAGE. Message discharged: \""
+                             << UsblParser::printBuffer(sendIM.buffer)
+                             << "\"" << endl;
+        outputDroppedIM(sendIM, " HUGE_INSTANT_MESSAGE");
+        return;
+    }
+    // Check queue size.
+    if(queueSendIM.size() > MAX_QUEUE_MSG_SIZE)
+    {
+        if(state() != FULL_IM_QUEUE)
+            state(FULL_IM_QUEUE);
+        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. FULL_IM_QUEUE. Message discharged: \""
+                             << UsblParser::printBuffer(sendIM.buffer)
+                             << "\"" << endl;
+        outputDroppedIM(sendIM, "FULL_IM_QUEUE");
+        return;
+    }
+    if(state() != RUNNING)
+        state(RUNNING);
+    queueSendIM.push(sendIM);
 }
 
 bool Task::isSendIMAvbl(AcousticConnection const& acoustic_connection)
@@ -572,4 +602,26 @@ bool Task::waitIMAck(queue<SendIM> const& queue_im)
     else if( !queue_im.front().deliveryReport)
         return false;
     return true;
+}
+
+void Task::outputDroppedIM(SendIM const& dropped_im, std::string const &reason)
+{
+    counter_message_dropped ++;
+    DroppedMessages drop_im;
+    drop_im.time = base::Time::now();
+    drop_im.droppedIm = dropped_im;
+    drop_im.reason = reason;
+    drop_im.messageDropped = counter_message_dropped;
+    _dropped_message.write(drop_im);
+}
+
+void Task::outputDroppedData(iodrivers_base::RawPacket const& dropped_data, std::string const &reason)
+{
+    counter_raw_data_dropped ++;
+    DroppedRawData drop_data;
+    drop_data.time = base::Time::now();
+    drop_data.droppedData = dropped_data;
+    drop_data.reason = reason;
+    drop_data.dataDropped = counter_raw_data_dropped;
+    _dropped_raw_data.write(drop_data);
 }

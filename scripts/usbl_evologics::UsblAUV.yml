@@ -1,0 +1,36 @@
+--- name:default
+# TODO Include more parameters
+# Set if device's parameters should be updated.
+# FALSE, device uses its stored settings profile.
+# TRUE, device uses parameters set in "device_settings".
+change_parameters: false
+# The device address. It can either be serial://PATH[:baudrate],
+# udp://IP_OR_HOSTNAME[:PORT] or tcp://IP_OR_HOSTNAME[:PORT]. Leave empty if
+# you mean to use the io_raw_in and io_raw_out ports.
+io_port: "tcp://192.168.42.5:49156"
+#io_port: "serial:///dev/port_usbl:19200"
+# The timeout on read. Defaults to one second
+io_read_timeout:
+  microseconds: 1000000
+# The interval at which the status port should be written. Defaults to one
+# second
+io_status_interval:
+  microseconds: 1000000
+# The timeout on write. Defaults to one second. Used only in direct I/O mode
+io_write_timeout:
+  microseconds: 1000000
+# Define operation mode. DATA is the default mode.
+# DATA, raw_data and messages are transmitted over acoustic link.
+# COMMAND, raw_data can not be transmitted over acoustic link, remaining exclusively for messages.
+mode: :DATA
+# Set reset drop counter.
+# FALSE, counter will not be reseted.
+# TRUE, counter will be reseted.
+reset_drop_counter: false
+# Set reset overflow counter.
+# FALSE, counter will not be reseted.
+# TRUE, counter will be reseted.
+reset_overflow_counter: false
+# Period for status update. Defaults to one second
+status_period:
+  microseconds: 1000000

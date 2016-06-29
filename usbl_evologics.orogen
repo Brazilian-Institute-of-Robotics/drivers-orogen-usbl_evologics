@@ -1,6 +1,7 @@
 name "usbl_evologics"
 using_library "usbl_evologics"
 import_types_from "base"
+import_types_from "usbl_evologicsTypes.hpp"
 import_types_from "usbl_evologics/DriverTypes.hpp"
 using_task_library "iodrivers_base"
 
@@ -73,6 +74,10 @@ task_context "Task" do
    output_port "acoustic_channel", "/usbl_evologics/AcousticChannel"
    # Delivering status of "message_input".  
    output_port "message_status", "/usbl_evologics/MessageStatus"
+   # Dropped message from driver. Those messages are not even send to usbl device
+   output_port "dropped_message", "/usbl_evologics/DroppedMessages"
+   # Dropped raw data from driver. Those raw_data are not even send to usbl device
+   output_port "dropped_raw_data", "/usbl_evologics/DroppedRawData"
 
    ###################################
    ##   Operations
@@ -90,13 +95,9 @@ task_context "Task" do
    # Restore Factory Settings.
    operation('restoreFactorySettings')
   
-   # MISSING_DELIVERY_REPORT: If usbl is not able to deliver a message, it's returns a FAILED delivery report
-   #  and will automaticly retry to deliver it "device_settings.imRetry" times.
-   #  The driver will expect the same amount of FAILED delivery report if not receive a DELIREVED report before that.
-   #  If this doesn't happen, driver get in exception state.
-   exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA, :MISSING_DELIVERY_REPORT,
-                    :HUGE_RAW_DATA_INPUT, :HUGE_INSTANT_MESSAGE, :FULL_RAW_DATA_QUEUE, :FULL_IM_QUEUE,
-                    :OLD_ACK
+   runtime_states   :HUGE_RAW_DATA_INPUT, :HUGE_INSTANT_MESSAGE, :FULL_RAW_DATA_QUEUE, :FULL_IM_QUEUE
+   exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA,
+                    :MISSING_DELIVERY_REPORT, :OLD_ACK
 
 end
 

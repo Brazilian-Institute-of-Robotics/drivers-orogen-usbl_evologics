@@ -29,13 +29,6 @@ bool UsblDock::configureHook()
     if (! UsblDockBase::configureHook())
         return false;
 
-    if(_interface.get() != ETHERNET)
-    {
-        RTT::log(RTT::Error) << "Usbl_evologics UsblDock.cpp. WRONG INTERFACE, define tcp connection in _interface" << std::endl;
-        exception(WRONG_INTERFACE);
-        return false;
-    }
-
     // Just to be sure the usbl will output position samples.
     if(!driver->getPositioningDataOutput())
         driver->setPositioningDataOutput(true);

@@ -29,13 +29,6 @@ bool UsblAUV::configureHook()
     if (! UsblAUVBase::configureHook())
         return false;
 
-    if(_interface.get() != SERIAL)
-    {
-        RTT::log(RTT::Error) << "Usbl_evologics UsblAUV.cpp. WRONG INTERFACE, define serial connection in _interface" << std::endl;
-        exception(WRONG_INTERFACE);
-        return false;
-    }
-
     return true;
 }
 bool UsblAUV::startHook()

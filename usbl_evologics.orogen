@@ -32,7 +32,10 @@ task_context "Task" do
    property "status_period", "base/Time"
    # Timeout for delivery report of Instant Message. Defaults to ten seconds.
    property "timeout_delivery_report", "base/Time"
-   
+   # Set interface with device. SERIAL or ETHERNET.
+   # The interface type may be different from the one set by io_port, in case there is an intermediary, i.e. sys_mgm.
+   property "interface", "/usbl_evologics/InterfaceType", :SERIAL
+
    # Source Level. Defines the Sound Pressure Level (SPL) in transmission mode.
    #  MAXIMUM = 0. SPL = 184 dB. To be set carefully.
    #  HIGH = 1. SPL = 178 dB.
@@ -96,7 +99,7 @@ task_context "Task" do
    operation('restoreFactorySettings')
   
    runtime_states   :HUGE_RAW_DATA_INPUT, :HUGE_INSTANT_MESSAGE, :FULL_RAW_DATA_QUEUE, :FULL_IM_QUEUE
-   exception_states :WRONG_INTERFACE, :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA,
+   exception_states :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA,
                     :MISSING_DELIVERY_REPORT, :OLD_ACK
 
 end

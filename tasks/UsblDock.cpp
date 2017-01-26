@@ -60,10 +60,12 @@ void UsblDock::cleanupHook()
 void UsblDock::processParticularNotification(NotificationInfo const &notification)
 {
     if(notification.notification == USBLLONG)
-    {   base::samples::RigidBodyState pose = driver->getPose(driver->getPose(notification.buffer));
+    {   Position usbl_pose = driver->getPose(notification.buffer);
+        base::samples::RigidBodyState pose = driver->getPose(usbl_pose);
         pose.sourceFrame = _source_frame.get();
         pose.targetFrame = _target_frame.get();
         _position_samples.write(pose);
+        _usbl_position_samples.write(usbl_pose);
         return ;
     }
     else if(notification.notification == USBLANGLE)

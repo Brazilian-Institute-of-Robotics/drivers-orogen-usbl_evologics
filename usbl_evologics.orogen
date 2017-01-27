@@ -121,6 +121,8 @@ task_context "UsblDock" do
    
    # AUV's pose in USBL frame. Present with Ethernet Connection
    output_port "position_samples", "/base/samples/RigidBodyState"
+   # AUV's pose in USBL frame. Present with Ethernet Connection
+   output_port "usbl_position_samples", "/usbl_evologics/Position"
 
    # In case the USBL is not able to compute the pose of the remote device, it can provide the direction toward it.
    output_port "direction_samples", "/usbl_evologics/Direction"

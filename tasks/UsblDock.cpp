@@ -75,7 +75,7 @@ void UsblDock::processParticularNotification(NotificationInfo const &notificatio
     }
     else
     {
-        RTT::log(RTT::Error) << "Usbl_evologics UsblDock.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << std::endl;
+        RTT::log(RTT::Error) << "Usbl_evologics UsblDock.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << RTT::endlog();
         return ;
     }
 }

@@ -178,9 +178,9 @@ void Task::updateHook()
        _acoustic_channel.write( addStatisticCounters( driver->getAcousticChannelparameters()));
        _message_status.write( addStatisticCounters( checkMessageStatus()));
 
-       // Update Source Level in dynamic property in case the Source Level Control is set (local Source Level establish by remote device).
+       // Log Source Level in case the Source Level Control is set (local Source Level establish by remote device).
        if(driver->getSourceLevelControl())
-           _source_level.set(driver->getSourceLevel());
+            RTT::log(RTT::Info) << "Current Source Level: \"" << driver->getSourceLevel() << "\"" << RTT::endlog();
    }
 
 

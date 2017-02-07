@@ -49,7 +49,7 @@ Task::~Task()
 bool Task::setSource_level(::usbl_evologics::SourceLevel const & value)
 {
 
-    if(driver->getSourceLevel() != value)
+    if(!driver->getSourceLevelControl() && driver->getSourceLevel() != value)
     {
         driver->setSourceLevel(value);
         RTT::log(RTT::Info) << "USBL's source level change to \"" << value << "\"" << endl;

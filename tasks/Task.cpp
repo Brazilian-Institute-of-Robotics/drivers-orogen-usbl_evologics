@@ -49,10 +49,10 @@ Task::~Task()
 bool Task::setSource_level(::usbl_evologics::SourceLevel const & value)
 {
 
-    if(driver->getSourceLevel() != value)
+    if(!driver->getSourceLevelControl() && driver->getSourceLevel() != value)
     {
         driver->setSourceLevel(value);
-        RTT::log(RTT::Info) << "USBL's source level change to \"" << value << "\"" << endl;
+        RTT::log(RTT::Info) << "USBL's source level change to \"" << value << "\"" << RTT::endlog();
     }
     return(usbl_evologics::TaskBase::setSource_level(value));
 }
@@ -62,7 +62,7 @@ bool Task::setSource_level_control(bool value)
     if(driver->getSourceLevelControl() != value)
     {
         driver->setSourceLevelControl(value);
-        RTT::log(RTT::Info) << "USBL's source level control change to \"" << (value?"true":"false") << "\"" << endl;
+        RTT::log(RTT::Info) << "USBL's source level control change to \"" << (value?"true":"false") << "\"" << RTT::endlog();
     }
     return(usbl_evologics::TaskBase::setSource_level_control(value));
 }
@@ -126,7 +126,7 @@ bool Task::configureHook()
     // Get parameters.
     DeviceSettings desired_settings = _desired_device_settings.get();
     current_settings = getDeviceSettings();
-    RTT::log(RTT::Info) << "USBL's initial settings"<< endl << getStringOfSettings(current_settings, driver->getSourceLevel(), driver->getSourceLevelControl()) << endl;
+    RTT::log(RTT::Info) << "USBL's initial settings"<< endl << getStringOfSettings(current_settings, driver->getSourceLevel(), driver->getSourceLevelControl()) << RTT::endlog();
 
     // Update parameters.
     if(_change_parameters.get())
@@ -134,7 +134,7 @@ bool Task::configureHook()
         //TODO need validation
         driver->updateDeviceParameters(desired_settings, current_settings);
         current_settings = desired_settings;
-        RTT::log(RTT::Info) << "USBL's updated settings"<< endl << getStringOfSettings(current_settings) << endl;
+        RTT::log(RTT::Info) << "USBL's updated settings"<< endl << getStringOfSettings(current_settings) << RTT::endlog();
     }
     // Hack to get the actual parameters, and in case it's need to update one or other parameters, the user is not required to know how to set the whole configuration.
     else
@@ -147,10 +147,10 @@ bool Task::configureHook()
     // Log device's information
     VersionNumbers device_info = driver->getFirmwareInformation();
     if(device_info.firmwareVersion.find("1.7") == string::npos)
-        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Component was developed for firmware version \"1.7\" and actual version is: \""<< device_info.firmwareVersion <<"\". Be aware of eventual incompatibility." << endl;
+        RTT::log(RTT::Warning) << "Usbl_evologics Task.cpp. Component was developed for firmware version \"1.7\" and actual version is: \""<< device_info.firmwareVersion <<"\". Be aware of eventual incompatibility." << RTT::endlog();
     RTT::log(RTT::Info) << "USBL's firmware information. Firmware version: "<< device_info.firmwareVersion
             <<"Physical and Data-Link layer protocol: "<< device_info.accousticVersion
-            << "Manufacturer: " << device_info.manufacturer << endl;
+            << "Manufacturer: " << device_info.manufacturer <<RTT::endlog();
 
     return true;
 }
@@ -178,9 +178,9 @@ void Task::updateHook()
        _acoustic_channel.write( addStatisticCounters( driver->getAcousticChannelparameters()));
        _message_status.write( addStatisticCounters( checkMessageStatus()));
 
-       // Update Source Level in dynamic property in case the Source Level Control is set (local Source Level establish by remote device).
+       // Log Source Level in case the Source Level Control is set (local Source Level establish by remote device).
        if(driver->getSourceLevelControl())
-           _source_level.set(driver->getSourceLevel());
+            RTT::log(RTT::Info) << "Current Source Level: \"" << driver->getSourceLevel() << "\"" << RTT::endlog();
    }
 
 
@@ -219,7 +219,7 @@ void Task::updateHook()
    // An internal error has occurred on device. Manual says to reset the device.
    if(driver->getConnectionStatus().status == OFFLINE_ALARM)
    {
-       RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << endl;
+       RTT::log(RTT::Fatal) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << RTT::endlog();
        exception(DEVICE_INTERNAL_ERROR);
        throw runtime_error("Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE");
    }
@@ -263,7 +263,7 @@ void Task::processIO()
     if((response_info = driver->readResponse()).response != NO_RESPONSE)
     {
         string info = "Usbl_evologics Task.cpp. In processIO, unexpected read a response of a request: ";
-        RTT::log(RTT::Error) << info <<"\""<< UsblParser::printBuffer(response_info.buffer) << "\"" << endl;
+        RTT::log(RTT::Error) << info <<"\""<< UsblParser::printBuffer(response_info.buffer) << "\"" << RTT::endlog();
     }
 }
 
@@ -294,7 +294,7 @@ void Task::filterRawData( vector<uint8_t> const & raw_data_in)
     if (buffer.find("+++") != string::npos)
     {
         string error_msg = "Usbl_evologics Task.cpp. There is the malicious string \"+++\" in raw_data_input. DO NOT use it as it could be interpreted as a command by device.";
-        RTT::log(RTT::Error) << error_msg << endl;
+        RTT::log(RTT::Error) << error_msg << RTT::endlog();
         exception(MALICIOUS_SEQUENCE_IN_RAW_DATA);
         throw runtime_error(error_msg);
     }
@@ -320,7 +320,7 @@ void Task::processNotification(NotificationInfo const &notification)
             error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message: \"" << UsblParser::printBuffer(queuePendingIMs.front().buffer) << "\". Be sure to wait delivery of last IM.";
         else
             error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message. But I don't know from which message is this notification. Maybe from an old one or one that doesn't require ack notification.";
-        RTT::log(RTT::Error) << error_msg.str() << endl;
+        RTT::log(RTT::Error) << error_msg.str() << RTT::endlog();
         return ;
     }
     else
@@ -329,7 +329,7 @@ void Task::processNotification(NotificationInfo const &notification)
 
 void Task::processParticularNotification(NotificationInfo const &notification)
 {
-    RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << endl;
+    RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Notification NOT implemented: \"" << UsblParser::printBuffer(notification.buffer) << "\"." << RTT::endlog();
 }
 
 MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &notification)
@@ -357,7 +357,7 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
         stringstream error_msg;
         error_msg << "Usbl_evologics Task.cpp. Device reported a failed delivery for Instant Message: \""
                 << UsblParser::printBuffer(message_status.sendIm.buffer) << "\".";
-        RTT::log(RTT::Error) << error_msg.str() << endl;
+        RTT::log(RTT::Warning) << error_msg.str() << RTT::endlog();
     }
     else
     {
@@ -443,7 +443,7 @@ void Task::enqueueSendRawPacket(iodrivers_base::RawPacket const &raw_packet, Dev
             state(HUGE_RAW_DATA_INPUT);
         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. HUGE_RAW_DATA_INPUT. RawPacket discharged: \""
                              << UsblParser::printBuffer(raw_packet.data)
-                             << "\"" << endl;
+                             << "\"" << RTT::endlog();
         outputDroppedData(raw_packet, "HUGE_RAW_DATA_INPUT");
         return;
     }
@@ -453,7 +453,7 @@ void Task::enqueueSendRawPacket(iodrivers_base::RawPacket const &raw_packet, Dev
             state(FULL_RAW_DATA_QUEUE);
         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. FULL_RAW_DATA_QUEUE. RawPacket discharged: \""
                              << UsblParser::printBuffer(raw_packet.data)
-                             << "\"" << endl;
+                             << "\"" << RTT::endlog();
         outputDroppedData(raw_packet, "FULL_RAW_DATA_QUEUE");
         return;
     }
@@ -471,7 +471,7 @@ void Task::enqueueSendIM(SendIM const &sendIM)
             state(HUGE_INSTANT_MESSAGE);
         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. HUGE_INSTANT_MESSAGE. Message discharged: \""
                              << UsblParser::printBuffer(sendIM.buffer)
-                             << "\"" << endl;
+                             << "\"" << RTT::endlog();
         outputDroppedIM(sendIM, " HUGE_INSTANT_MESSAGE");
         return;
     }
@@ -482,7 +482,7 @@ void Task::enqueueSendIM(SendIM const &sendIM)
             state(FULL_IM_QUEUE);
         RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. FULL_IM_QUEUE. Message discharged: \""
                              << UsblParser::printBuffer(sendIM.buffer)
-                             << "\"" << endl;
+                             << "\"" << RTT::endlog();
         outputDroppedIM(sendIM, "FULL_IM_QUEUE");
         return;
     }
@@ -562,7 +562,7 @@ void Task::sendOneRawData(void)
     }
     else
     {
-        RTT::log(RTT::Error) << "Usbl_evologics Task.cpp. Device can not send raw_data in COMMAND mode. Be sure to switch device to DATA mode" << endl;
+        RTT::log(RTT::Warning) << "Usbl_evologics Task.cpp. Device can not send raw_data in COMMAND mode. Be sure to switch device to DATA mode" << RTT::endlog();
         // Pop packet or let it get full and go to exception??
         // Pop it by now. If it's on COMMAND mode it's known raw packet won't be transmitted and make no reason to delivery a old raw packet if it switch back to DATA.
         queueSendRawPacket.pop();

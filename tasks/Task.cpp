@@ -115,7 +115,6 @@ bool Task::configureHook()
     // If device is already in data mode, it will send the command 'ATO' it as raw data
     // It makes sure the device is in DATA mode
     driver->switchToDataMode();
-    sleep(1);
     //Set operation mode. Default DATA mode.
     if(driver->getMode() != _mode.get())
         driver->setOperationMode(_mode.get());

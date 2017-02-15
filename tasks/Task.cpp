@@ -99,7 +99,7 @@ void Task::restoreFactorySettings(void)
 bool Task::configureHook()
 {
     // Creating the driver object
-    driver.reset(new Driver());
+    driver.reset(new Driver(COMMAND));
     if (!_io_port.get().empty())
         driver->openURI(_io_port.get());
     setDriver(driver.get());
@@ -111,14 +111,18 @@ bool Task::configureHook()
     // Set interface
     driver->setInterface(_interface.get());
 
+    // Switch device to data mode.
+    // If device is already in data mode, it will send the command 'ATO' it as raw data
+    // It makes sure the device is in DATA mode
+    driver->switchToDataMode();
+    //Set operation mode. Default DATA mode.
+    if(driver->getMode() != _mode.get())
+        driver->setOperationMode(_mode.get());
+
     driver->resetDevice(SEND_BUFFER, true);
 
      // Set System Time for current Time.
     driver->setSystemTimeNow();
-
-    //Set operation mode. Default DATA mode.
-    if(driver->getMode() != _mode.get())
-        driver->setOperationMode(_mode.get());
 
     // Initialize source level parameters
     updateDynamicProperties();

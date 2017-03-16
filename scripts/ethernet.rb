@@ -2,15 +2,12 @@ require 'orocos'
 
 include Orocos
 Orocos.initialize
-Orocos.run 'usbl_evologics::UsblDock' => 'usbldock' do
+Orocos.run 'usbl_evologics::UsblDock' => 'usbldock', gdb: true do
    
     usbl = Orocos.name_service.get 'usbldock'
 
    #USBL Config
-    usbl.io_port = "tcp://192.168.0.191:9200"
-#    usbl.reset_drop_counter = false
-#    usbl.reset_overflow_counter = false    
-        
+    usbl.apply_conf_file('usbl_evologics::UsblDock.yml')
         
     usbl.configure
     usbl.start

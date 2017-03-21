@@ -2,7 +2,7 @@ require 'orocos'
 
 include Orocos
 Orocos.initialize
-Orocos.run 'usbl_evologics::UsblDock' => 'usbldock', gdb: true do
+Orocos.run 'usbl_evologics::UsblDock' => 'usbldock' do
    
     usbl = Orocos.name_service.get 'usbldock'
 

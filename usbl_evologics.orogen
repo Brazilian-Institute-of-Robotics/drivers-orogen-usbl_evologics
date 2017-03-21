@@ -103,6 +103,7 @@ task_context "Task" do
                     :MISSING_DELIVERY_REPORT, :OLD_ACK
 
    port_driven
+   fd_driven
 end
 
 task_context "UsblDock" do

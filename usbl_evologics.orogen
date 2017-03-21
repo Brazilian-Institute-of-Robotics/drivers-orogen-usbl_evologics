@@ -102,6 +102,8 @@ task_context "Task" do
    exception_states :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA,
                     :MISSING_DELIVERY_REPORT, :OLD_ACK
 
+   port_driven
+   fd_driven
 end
 
 task_context "UsblDock" do

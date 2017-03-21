@@ -1,0 +1,77 @@
+--- name:default
+# TODO Include more parameters
+# Set if device's parameters should be updated.
+# FALSE, device uses its stored settings profile.
+# TRUE, device uses parameters set in "device_settings".
+change_parameters: false
+# Desired device settings.
+desired_device_settings:
+  lowGain: false
+  carrierWaveformId: 0
+  localAddress: 0
+  remoteAddress: 0
+  highestAddress: 0
+  clusterSize: 0
+  packetTime: 0
+  retryCount: 0
+  retryTimeout: 0
+  idleTimeout: 0
+  speedSound: 0
+  imRetry: 0
+  promiscuosMode: false
+  wuActiveTime: 0
+  wuPeriod: 0
+  wuHoldTimeout: 0
+  poolSize: []
+# Set interface with device. SERIAL or ETHERNET.
+# The interface type may be different from the one set by io_port, in case there is an intermediary, i.e. sys_mgm.
+interface: :ETHERNET
+# The device address. It can either be serial://PATH[:baudrate],
+# udp://IP_OR_HOSTNAME[:PORT] or tcp://IP_OR_HOSTNAME[:PORT]. Leave empty if
+# you mean to use the io_raw_in and io_raw_out ports.
+io_port: 'tcp://192.168.42.42:9200'
+# The timeout on read. Defaults to one second
+io_read_timeout:
+  microseconds: 10000000
+# The interval at which the status port should be written. Defaults to one
+# second
+io_status_interval:
+  microseconds: 1000000
+# The timeout on write. Defaults to one second. Used only in direct I/O mode
+io_write_timeout:
+  microseconds: 10000000
+# Define operation mode. DATA is the default mode.
+# DATA, raw_data and messages are transmitted over acoustic link.
+# COMMAND, raw_data can not be transmitted over acoustic link, remaining exclusively for messages.
+mode: :DATA
+# Set reset drop counter.
+# FALSE, counter will not be reseted.
+# TRUE, counter will be reseted.
+reset_drop_counter: false
+# Set reset overflow counter.
+# FALSE, counter will not be reseted.
+# TRUE, counter will be reseted.
+reset_overflow_counter: false
+# Source frame of position_sample.
+source_frame: auv
+# Source Level. Defines the Sound Pressure Level (SPL) in transmission mode.
+#  MAXIMUM = 0. SPL = 184 dB. To be set carefully.
+#  HIGH = 1. SPL = 178 dB.
+#  LOW = 2. SPL = 172 dB.
+#  MINIMAL = 3. SPL = 164 dB.
+#  IN_AIR = 3. Alias of MINIMAL. Use this values for outside water test.
+source_level: :IN_AIR
+# Source Level Control.
+#  TRUE: The local device's Source Level can be changed by a remote device.
+#        The local device will adopt the remote device's Source Level setting during connection establishment
+#        when the remote device sends raw data.
+#  FALSE: THe local Source Level setting can not be changed by a remote device.
+source_level_control: false
+# Period for status update. Defaults to one second
+status_period:
+  microseconds: 1000000
+# Target frame of position_sample.
+target_frame: world_usbl
+# Timeout for delivery report of Instant Message. Defaults to ten seconds.
+timeout_delivery_report:
+  microseconds: 10000000

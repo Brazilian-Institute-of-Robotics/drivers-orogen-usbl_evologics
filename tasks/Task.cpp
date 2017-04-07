@@ -70,13 +70,13 @@ bool Task::setSource_level_control(bool value)
 // Reset Device to stored settings and restart it.
 void Task::resetDevice(void)
 {
-    driver->resetDevice(DEVICE);
+    driver->resetDevice(DEVICE, true);
 }
 
 // Clear the transmission buffer - drop raw data and instant message
 void Task::clearTransmissionBuffer(void)
 {
-    driver->resetDevice(SEND_BUFFER);
+    driver->resetDevice(SEND_BUFFER, true);
 }
 
 // Store current settings.
@@ -164,7 +164,7 @@ bool Task::startHook()
         return false;
 
     last_status = base::Time::now();
-    driver->resetDevice(SEND_BUFFER);
+    driver->resetDevice(SEND_BUFFER, true);
 
     cout << "USBL working" << endl;
 
@@ -234,7 +234,7 @@ void Task::errorHook()
 }
 void Task::stopHook()
 {
-    driver->resetDevice(SEND_BUFFER);
+    driver->resetDevice(SEND_BUFFER, true);
     TaskBase::stopHook();
 }
 void Task::cleanupHook()

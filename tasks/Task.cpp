@@ -235,6 +235,11 @@ void Task::errorHook()
 void Task::stopHook()
 {
     driver->resetDevice(SEND_BUFFER, true);
+    if(state() == EXCEPTION)
+    {
+       RTT::log(RTT::Info) << "Usbl_evologics Task.cpp. Recover from exception." << RTT::endlog();
+       recover();
+    }
     TaskBase::stopHook();
 }
 void Task::cleanupHook()

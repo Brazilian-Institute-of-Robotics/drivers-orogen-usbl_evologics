@@ -111,6 +111,10 @@ bool Task::configureHook()
     // Set interface
     driver->setInterface(_interface.get());
 
+    RTT::extras::FileDescriptorActivity* fd_activity = getActivity<RTT::extras::FileDescriptorActivity>();
+    if(fd_activity)
+        fd_activity->setTimeout(_status_period.get().toMilliseconds());
+
     // Switch device to data mode.
     // If device is already in data mode, it will send the command 'ATO' it as raw data
     // It makes sure the device is in DATA mode

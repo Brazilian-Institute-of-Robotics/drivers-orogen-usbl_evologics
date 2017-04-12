@@ -1,6 +1,7 @@
 /* Generated from orogen/lib/orogen/templates/tasks/Task.cpp */
 
 #include "Task.hpp"
+#include <boost/lexical_cast.hpp>
 #include <rtt/extras/FileDescriptorActivity.hpp>
 
 using namespace std;
@@ -395,7 +396,8 @@ MessageStatus Task::checkMessageStatus()
         if(base::Time::now() - last_im_sent > _timeout_delivery_report.get())
         {
             exception(MISSING_DELIVERY_REPORT);
-            throw runtime_error("Timeout while wait for a delivery report.");
+            throw runtime_error("Timeout while wait for a delivery report. Timeout of "
+                    + boost::lexical_cast<string>(_timeout_delivery_report.get()) + "ms" );
         }
     }
     /**

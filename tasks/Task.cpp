@@ -7,41 +7,35 @@ using namespace std;
 using namespace usbl_evologics;
 
 Task::Task(std::string const& name)
-    : TaskBase(name)
+    : TaskBase(name),
+      counter_message_delivered(0),
+      counter_message_failed(0),
+      counter_message_received(0),
+      counter_message_sent(0),
+      counter_message_dropped(0),
+      counter_message_canceled(0),
+      counter_raw_data_sent(0),
+      counter_raw_data_received(0),
+      counter_raw_data_dropped(0)
 {
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));
-
-    //Initialize Instant Messages counters
-    counter_message_delivered = 0;
-    counter_message_failed = 0;
-    counter_message_received = 0;
-    counter_message_sent = 0;
-    counter_message_dropped = 0;
-    counter_message_canceled = 0;
-    // Initialize raw data counters
-    counter_raw_data_sent = 0;
-    counter_raw_data_received = 0;
-    counter_raw_data_dropped = 0;
 }
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
-    : TaskBase(name, engine)
+    : TaskBase(name, engine),
+      counter_message_delivered(0),
+      counter_message_failed(0),
+      counter_message_received(0),
+      counter_message_sent(0),
+      counter_message_dropped(0),
+      counter_message_canceled(0),
+      counter_raw_data_sent(0),
+      counter_raw_data_received(0),
+      counter_raw_data_dropped(0)
 {
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));
-
-    //Initialize Instant Messages counters
-    counter_message_delivered = 0;
-    counter_message_failed = 0;
-    counter_message_received = 0;
-    counter_message_sent = 0;
-    counter_message_dropped = 0;
-    counter_message_canceled = 0;
-    // Initialize raw data counters
-    counter_raw_data_sent = 0;
-    counter_raw_data_received = 0;
-    counter_raw_data_dropped = 0;
 }
 
 Task::~Task()
@@ -118,7 +112,7 @@ bool Task::configureHook()
         fd_activity->setTimeout(_status_period.get().toMilliseconds());
 
     // Switch device to data mode.
-    // If device is already in data mode, it will send the command 'ATO' it as raw data
+    // If device is already in data mode, it will transmit the command 'ATO' as raw data
     // It makes sure the device is in DATA mode
     driver->switchToDataMode();
     //Set operation mode. Default DATA mode.
@@ -337,7 +331,7 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
     if(notification.notification != DELIVERY_REPORT)
         throw runtime_error("Usbl_evologics Task.cpp. processDeliveryReportNotification did not receive a delivery report.");
 
-    // Check in queue if a Ack is expected.
+    // Check in queue if an Ack is expected.
     if( !waitIMAck(queuePendingIMs))
     {
         exception(OLD_ACK);
@@ -382,7 +376,7 @@ MessageStatus Task::checkMessageStatus()
     message_status.status = driver->getIMDeliveryStatus();
     if(message_status.status == PENDING)
     {
-        // Check in queue if a Ack is expected.
+        // Check in queue if an Ack is expected.
         if( queuePendingIMs.empty() )
         {
             exception(OLD_ACK);
@@ -539,7 +533,7 @@ void Task::sendOneIM(void)
     // Starting count for the timeout_delivery_report
     if(im.deliveryReport)
     {
-	queuePendingIMs.push(im);
+        queuePendingIMs.push(im);
         last_im_sent = base::Time::now();
     }
     // If no delivery report is requested, pop message from queue.
@@ -565,7 +559,7 @@ void Task::sendOneRawData(void)
     {
         RTT::log(RTT::Warning) << "Usbl_evologics Task.cpp. Device can not send raw_data in COMMAND mode. Be sure to switch device to DATA mode" << RTT::endlog();
         // Pop packet or let it get full and go to exception??
-        // Pop it by now. If it's on COMMAND mode it's known raw packet won't be transmitted and make no reason to delivery a old raw packet if it switch back to DATA.
+        // Pop it by now. If it's on COMMAND mode it's known raw packet won't be transmitted and make no reason to delivery an old raw packet if it switches back to DATA.
         queueSendRawPacket.pop();
     }
 }

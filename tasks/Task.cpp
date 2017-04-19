@@ -175,60 +175,59 @@ void Task::updateHook()
     TaskBase::updateHook();
 
     AcousticConnection connection_status = driver->getConnectionStatus();
-   // An internal error has occurred on device. Manual says to reset the device.
-   if(connection_status.status == OFFLINE_ALARM)
-   {
-       RTT::log(RTT::Fatal) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << RTT::endlog();
-       exception(DEVICE_INTERNAL_ERROR);
-       throw runtime_error("Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE");
-   }
+
+    // An internal error has occurred on device. Manual says to reset the device.
+    if(connection_status.status == OFFLINE_ALARM)
+    {
+        RTT::log(RTT::Fatal) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << RTT::endlog();
+        exception(DEVICE_INTERNAL_ERROR);
+        throw runtime_error("Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE");
+    }
+
     // Output status
-   if((base::Time::now() - last_status) > _status_period.get())
-   {
-       last_status = base::Time::now();
-       _acoustic_connection.write(connection_status);
-       _acoustic_channel.write( addStatisticCounters( driver->getAcousticChannelparameters()));
-       _message_status.write( addStatisticCounters( checkMessageStatus()));
+    if((base::Time::now() - last_status) > _status_period.get())
+    {
+        last_status = base::Time::now();
+        _acoustic_connection.write(connection_status);
+        _acoustic_channel.write( addStatisticCounters( driver->getAcousticChannelparameters()));
+        _message_status.write( addStatisticCounters( checkMessageStatus()));
 
-       // Log Source Level in case the Source Level Control is set (local Source Level establish by remote device).
-       if(driver->getSourceLevelControl())
+        // Log Source Level in case the Source Level Control is set (local Source Level establish by remote device).
+        if(driver->getSourceLevelControl())
             RTT::log(RTT::Info) << "Current Source Level: \"" << driver->getSourceLevel() << "\"" << RTT::endlog();
-   }
+    }
 
+    // Buffer Message, once usbl doesn't queue messages, and it doesn't send several messages in a row.
+    SendIM send_IM;
+    while(_message_input.read(send_IM) == RTT::NewData)
+        enqueueSendIM(send_IM);
 
-   // Buffer Message, once usbl doesn't queue messages, and it doesn't send several messages in a row.
-   SendIM send_IM;
-   while(_message_input.read(send_IM) == RTT::NewData)
-       enqueueSendIM(send_IM);
+    // Enqueue Raw data to be transmitted
+    iodrivers_base::RawPacket raw_data_input;
+    while(_raw_data_input.read(raw_data_input) == RTT::NewData)
+        enqueueSendRawPacket(raw_data_input, current_settings);
 
-   // Enqueue Raw data to be transmitted
-   iodrivers_base::RawPacket raw_data_input;
-   while(_raw_data_input.read(raw_data_input) == RTT::NewData)
-       enqueueSendRawPacket(raw_data_input, current_settings);
+    // Transmit enqueued Instant Message
+    while( isSendIMAvbl(connection_status))
+        sendOneIM();
 
-   // Transmit enqueued Instant Message
-   while( isSendIMAvbl(connection_status))
-       sendOneIM();
+    // Transmit enqueued Raw Data. Consider just the first channel
+    while( isSendRawDataAvbl(connection_status))
+        connection_status.freeBuffer[0] += sendOneRawData();
 
-   // Transmit enqueued Raw Data. Consider just the first channel
-   while( isSendRawDataAvbl(connection_status))
-       connection_status.freeBuffer[0] += sendOneRawData();
+    // Process received notification from device
+    while(driver->hasNotification())
+        processNotification(driver->getNotification());
 
-   // Process received notification from device
-   while(driver->hasNotification())
-       processNotification(driver->getNotification());
-
-   // Process raw_data from remote device
-   while(driver->hasRawData())
-   {
-       iodrivers_base::RawPacket raw_packet_buffer;
-       raw_packet_buffer.time = base::Time::now();
-       raw_packet_buffer.data = driver->getRawData();
-       _raw_data_output.write(raw_packet_buffer);
-       counter_raw_data_received += raw_packet_buffer.data.size();
-   }
-
-
+    // Process raw_data from remote device
+    while(driver->hasRawData())
+    {
+        iodrivers_base::RawPacket raw_packet_buffer;
+        raw_packet_buffer.time = base::Time::now();
+        raw_packet_buffer.data = driver->getRawData();
+        _raw_data_output.write(raw_packet_buffer);
+        counter_raw_data_received += raw_packet_buffer.data.size();
+    }
 }
 void Task::errorHook()
 {

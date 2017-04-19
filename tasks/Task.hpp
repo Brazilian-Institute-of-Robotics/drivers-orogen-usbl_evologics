@@ -299,8 +299,9 @@ namespace usbl_evologics {
         /** Send Raw Data to usbl
          *
          *  Get Raw Data from queue and transmit it
+         * @return size of data trasmitted
          */
-        void sendOneRawData(void);
+        int sendOneRawData(void);
 
         /** Include raw_data counters on acoustic_connection
          *

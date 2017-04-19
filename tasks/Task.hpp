@@ -56,6 +56,7 @@ namespace usbl_evologics {
 	    long long unsigned int counter_message_received;
 	    long long unsigned int counter_message_sent;
 	    long long unsigned int counter_message_dropped;
+	    long long unsigned int counter_message_canceled;
 
 	    base::Time last_status;
 

@@ -7,39 +7,35 @@ using namespace std;
 using namespace usbl_evologics;
 
 Task::Task(std::string const& name)
-    : TaskBase(name)
+    : TaskBase(name),
+      counter_message_delivered(0),
+      counter_message_failed(0),
+      counter_message_received(0),
+      counter_message_sent(0),
+      counter_message_dropped(0),
+      counter_message_canceled(0),
+      counter_raw_data_sent(0),
+      counter_raw_data_received(0),
+      counter_raw_data_dropped(0)
 {
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));
-
-    //Initialize Instant Messages counters
-    counter_message_delivered = 0;
-    counter_message_failed = 0;
-    counter_message_received = 0;
-    counter_message_sent = 0;
-    counter_message_dropped = 0;
-    // Initialize raw data counters
-    counter_raw_data_sent = 0;
-    counter_raw_data_received = 0;
-    counter_raw_data_dropped = 0;
 }
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
-    : TaskBase(name, engine)
+    : TaskBase(name, engine),
+      counter_message_delivered(0),
+      counter_message_failed(0),
+      counter_message_received(0),
+      counter_message_sent(0),
+      counter_message_dropped(0),
+      counter_message_canceled(0),
+      counter_raw_data_sent(0),
+      counter_raw_data_received(0),
+      counter_raw_data_dropped(0)
 {
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));
-
-    //Initialize Instant Messages counters
-    counter_message_delivered = 0;
-    counter_message_failed = 0;
-    counter_message_received = 0;
-    counter_message_sent = 0;
-    counter_message_dropped = 0;
-    // Initialize raw data counters
-    counter_raw_data_sent = 0;
-    counter_raw_data_received = 0;
-    counter_raw_data_dropped = 0;
 }
 
 Task::~Task()
@@ -116,7 +112,7 @@ bool Task::configureHook()
         fd_activity->setTimeout(_status_period.get().toMilliseconds());
 
     // Switch device to data mode.
-    // If device is already in data mode, it will send the command 'ATO' it as raw data
+    // If device is already in data mode, it will transmit the command 'ATO' as raw data
     // It makes sure the device is in DATA mode
     driver->switchToDataMode();
     //Set operation mode. Default DATA mode.
@@ -321,16 +317,6 @@ void Task::processNotification(NotificationInfo const &notification)
         _message_status.write( addStatisticCounters( processDeliveryReportNotification(notification)));
         return ;
     }
-    else if(notification.notification == CANCELED_IM)
-    {
-        stringstream error_msg;
-        if(!queuePendingIMs.empty())
-            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message: \"" << UsblParser::printBuffer(queuePendingIMs.front().buffer) << "\". Be sure to wait delivery of last IM.";
-        else
-            error_msg << "Usbl_evologics Task.cpp. Error sending Instant Message. But I don't know from which message is this notification. Maybe from an old one or one that doesn't require ack notification.";
-        RTT::log(RTT::Error) << error_msg.str() << RTT::endlog();
-        return ;
-    }
     else
         processParticularNotification(notification);
 }
@@ -345,7 +331,7 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
     if(notification.notification != DELIVERY_REPORT)
         throw runtime_error("Usbl_evologics Task.cpp. processDeliveryReportNotification did not receive a delivery report.");
 
-    // Check in queue if a Ack is expected.
+    // Check in queue if an Ack is expected.
     if( !waitIMAck(queuePendingIMs))
     {
         exception(OLD_ACK);
@@ -357,21 +343,28 @@ MessageStatus Task::processDeliveryReportNotification(NotificationInfo const &no
     message_status.sendIm = queuePendingIMs.front();
     queuePendingIMs.pop();
 
-    if(!driver->getIMDeliveryReport(notification.buffer))
-    {
-        message_status.status = FAILED;
-        counter_message_failed++;
+    stringstream error_msg;
+    message_status.status = driver->getIMDeliveryReport(notification.buffer);
 
-        stringstream error_msg;
+    if(message_status.status == DELIVERED)
+        counter_message_delivered++;
+    else if(message_status.status == FAILED)
+    {
+        counter_message_failed++;
         error_msg << "Usbl_evologics Task.cpp. Device reported a failed delivery for Instant Message: \""
                 << UsblParser::printBuffer(message_status.sendIm.buffer) << "\".";
-        RTT::log(RTT::Warning) << error_msg.str() << RTT::endlog();
+    }
+    else if(message_status.status == CANCELED)
+    {
+        counter_message_canceled++;
+        error_msg << "Usbl_evologics Task.cpp. Canceled delivery report for Instant Message: \""
+                << UsblParser::printBuffer(message_status.sendIm.buffer) << "\".";
     }
     else
-    {
-        message_status.status = DELIVERED;
-        counter_message_delivered++;
-    }
+        throw runtime_error("Usbl_evologics Task.cpp. Unknonw delivery report status.");
+
+    if(!error_msg.str().empty())
+        RTT::log(RTT::Warning) << error_msg.str() << RTT::endlog();
 
     message_status.time = base::Time::now();
     return message_status;
@@ -383,20 +376,13 @@ MessageStatus Task::checkMessageStatus()
     message_status.status = driver->getIMDeliveryStatus();
     if(message_status.status == PENDING)
     {
-        // Check in queue if a Ack is expected.
+        // Check in queue if an Ack is expected.
         if( queuePendingIMs.empty() )
         {
             exception(OLD_ACK);
             throw runtime_error("Usbl_evologics Task.cpp. Device is waiting an acknowledgment for an old Instant Message");
         }
-
         message_status.sendIm = queuePendingIMs.front();
-        // Check for the last delivery report.
-        if(base::Time::now() - last_im_sent > _timeout_delivery_report.get())
-        {
-            exception(MISSING_DELIVERY_REPORT);
-            throw runtime_error("Timeout while wait for a delivery report.");
-        }
     }
     /**
      * Let message_status.sendIm empty case there is no message being transmitted (message_status.status == EMPTY or FAILED).
@@ -504,8 +490,9 @@ bool Task::isSendIMAvbl(AcousticConnection const& acoustic_connection)
     // TODO define exactly what to do for each acoustic_connection status
     if( acoustic_connection.status != ONLINE && acoustic_connection.status != INITIATION_ESTABLISH && acoustic_connection.status != INITIATION_LISTEN )
         return false;
-    // Other Instant Message is been transmitted
-    if( driver->getIMDeliveryStatus() == PENDING)
+    // Other Instant Message is been transmitted during the expected delivery report timeout
+    if( driver->getIMDeliveryStatus() == PENDING &&
+        (base::Time::now() - last_im_sent) < _timeout_delivery_report.get())
         return false;
     // No Instant Message to transmit
     if( queueSendIM.empty())
@@ -546,7 +533,7 @@ void Task::sendOneIM(void)
     // Starting count for the timeout_delivery_report
     if(im.deliveryReport)
     {
-	queuePendingIMs.push(im);
+        queuePendingIMs.push(im);
         last_im_sent = base::Time::now();
     }
     // If no delivery report is requested, pop message from queue.
@@ -572,7 +559,7 @@ void Task::sendOneRawData(void)
     {
         RTT::log(RTT::Warning) << "Usbl_evologics Task.cpp. Device can not send raw_data in COMMAND mode. Be sure to switch device to DATA mode" << RTT::endlog();
         // Pop packet or let it get full and go to exception??
-        // Pop it by now. If it's on COMMAND mode it's known raw packet won't be transmitted and make no reason to delivery a old raw packet if it switch back to DATA.
+        // Pop it by now. If it's on COMMAND mode it's known raw packet won't be transmitted and make no reason to delivery an old raw packet if it switches back to DATA.
         queueSendRawPacket.pop();
     }
 }
@@ -597,6 +584,7 @@ MessageStatus Task::addStatisticCounters( MessageStatus const& message_status)
     status.messageFailed = counter_message_failed;
     status.messageReceived = counter_message_received;
     status.messageSent = counter_message_sent;
+    status.messageCanceled = counter_message_canceled;
     return status;
 }
 

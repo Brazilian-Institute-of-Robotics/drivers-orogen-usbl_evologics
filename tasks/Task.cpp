@@ -107,9 +107,19 @@ bool Task::configureHook()
     // Set interface
     driver->setInterface(_interface.get());
 
+    // Make sure both timeout_delivery_report and status_period are respectd by setting the smaller one as the fd_timeout
+    if(_timeout_delivery_report.get().isNull())
+        throw runtime_error("Usbl_evologics Task.cpp. If you want timeout_delivery_report equals 0, just send IM that does not require ACK.");
+    base::Time fd_timeout;
+    if(_status_period.get().isNull())
+        fd_timeout = _timeout_delivery_report.get();
+    else if(_timeout_delivery_report.get() > _status_period.get())
+        fd_timeout = _status_period.get();
+    else
+        fd_timeout = _timeout_delivery_report.get();
     RTT::extras::FileDescriptorActivity* fd_activity = getActivity<RTT::extras::FileDescriptorActivity>();
     if(fd_activity)
-        fd_activity->setTimeout(_status_period.get().toMilliseconds());
+        fd_activity->setTimeout(fd_timeout.toMilliseconds());
 
     // Switch device to data mode.
     // If device is already in data mode, it will transmit the command 'ATO' as raw data

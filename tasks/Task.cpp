@@ -174,59 +174,60 @@ void Task::updateHook()
 {
     TaskBase::updateHook();
 
+    AcousticConnection connection_status = driver->getConnectionStatus();
+
+    // An internal error has occurred on device. Manual says to reset the device.
+    if(connection_status.status == OFFLINE_ALARM)
+    {
+        RTT::log(RTT::Fatal) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << RTT::endlog();
+        exception(DEVICE_INTERNAL_ERROR);
+        throw runtime_error("Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE");
+    }
+
     // Output status
-   if((base::Time::now() - last_status) > _status_period.get())
-   {
-       last_status = base::Time::now();
-       _acoustic_connection.write(driver->getConnectionStatus());
-       _acoustic_channel.write( addStatisticCounters( driver->getAcousticChannelparameters()));
-       _message_status.write( addStatisticCounters( checkMessageStatus()));
+    if((base::Time::now() - last_status) > _status_period.get())
+    {
+        last_status = base::Time::now();
+        _acoustic_connection.write(connection_status);
+        _acoustic_channel.write( addStatisticCounters( driver->getAcousticChannelparameters()));
+        _message_status.write( addStatisticCounters( checkMessageStatus()));
 
-       // Log Source Level in case the Source Level Control is set (local Source Level establish by remote device).
-       if(driver->getSourceLevelControl())
+        // Log Source Level in case the Source Level Control is set (local Source Level establish by remote device).
+        if(driver->getSourceLevelControl())
             RTT::log(RTT::Info) << "Current Source Level: \"" << driver->getSourceLevel() << "\"" << RTT::endlog();
-   }
+    }
 
+    // Buffer Message, once usbl doesn't queue messages, and it doesn't send several messages in a row.
+    SendIM send_IM;
+    while(_message_input.read(send_IM) == RTT::NewData)
+        enqueueSendIM(send_IM);
 
-   // Buffer Message, once usbl doesn't queue messages, and it doesn't send several messages in a row.
-   SendIM send_IM;
-   while(_message_input.read(send_IM) == RTT::NewData)
-       enqueueSendIM(send_IM);
+    // Enqueue Raw data to be transmitted
+    iodrivers_base::RawPacket raw_data_input;
+    while(_raw_data_input.read(raw_data_input) == RTT::NewData)
+        enqueueSendRawPacket(raw_data_input, current_settings);
 
-   // Enqueue Raw data to be transmitted
-   iodrivers_base::RawPacket raw_data_input;
-   while(_raw_data_input.read(raw_data_input) == RTT::NewData)
-       enqueueSendRawPacket(raw_data_input, current_settings);
+    // Transmit enqueued Instant Message
+    while( isSendIMAvbl(connection_status))
+        sendOneIM();
 
-   // Transmit enqueued Instant Message
-   while( isSendIMAvbl(driver->getConnectionStatus()))
-       sendOneIM();
+    // Transmit enqueued Raw Data. Consider just the first channel
+    while( isSendRawDataAvbl(connection_status))
+        connection_status.freeBuffer[0] += sendOneRawData();
 
-   // Transmit enqueued Raw Data
-   while( isSendRawDataAvbl(driver->getConnectionStatus()))
-       sendOneRawData();
+    // Process received notification from device
+    while(driver->hasNotification())
+        processNotification(driver->getNotification());
 
-   // Process received notification from device
-   while(driver->hasNotification())
-       processNotification(driver->getNotification());
-
-   // Process raw_data from remote device
-   while(driver->hasRawData())
-   {
-       iodrivers_base::RawPacket raw_packet_buffer;
-       raw_packet_buffer.time = base::Time::now();
-       raw_packet_buffer.data = driver->getRawData();
-       _raw_data_output.write(raw_packet_buffer);
-       counter_raw_data_received += raw_packet_buffer.data.size();
-   }
-
-   // An internal error has occurred on device. Manual says to reset the device.
-   if(driver->getConnectionStatus().status == OFFLINE_ALARM)
-   {
-       RTT::log(RTT::Fatal) << "Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE" << RTT::endlog();
-       exception(DEVICE_INTERNAL_ERROR);
-       throw runtime_error("Usbl_evologics Task.cpp. Device Internal Error. RESET DEVICE");
-   }
+    // Process raw_data from remote device
+    while(driver->hasRawData())
+    {
+        iodrivers_base::RawPacket raw_packet_buffer;
+        raw_packet_buffer.time = base::Time::now();
+        raw_packet_buffer.data = driver->getRawData();
+        _raw_data_output.write(raw_packet_buffer);
+        counter_raw_data_received += raw_packet_buffer.data.size();
+    }
 }
 void Task::errorHook()
 {
@@ -490,15 +491,12 @@ bool Task::isSendIMAvbl(AcousticConnection const& acoustic_connection)
     // TODO define exactly what to do for each acoustic_connection status
     if( acoustic_connection.status != ONLINE && acoustic_connection.status != INITIATION_ESTABLISH && acoustic_connection.status != INITIATION_LISTEN )
         return false;
-    // Other Instant Message is been transmitted during the expected delivery report timeout
-    if( driver->getIMDeliveryStatus() == PENDING &&
-        (base::Time::now() - last_im_sent) < _timeout_delivery_report.get())
-        return false;
     // No Instant Message to transmit
     if( queueSendIM.empty())
         return false;
-    // Check free buffer size
-    if( acoustic_connection.freeBuffer[0] < MAX_MSG_SIZE)
+    // Other Instant Message is been transmitted during the expected delivery report timeout
+    if( driver->getIMDeliveryStatus() == PENDING &&
+        (base::Time::now() - last_im_sent) < _timeout_delivery_report.get())
         return false;
     return true;
 }
@@ -544,16 +542,18 @@ void Task::sendOneIM(void)
     }
 }
 
-void Task::sendOneRawData(void)
+int Task::sendOneRawData(void)
 {
     if(queueSendRawPacket.empty())
-        return;
+        return 0;
     if(driver->getMode() == DATA)
     {
         filterRawData(queueSendRawPacket.front().data);
         driver->sendRawData(queueSendRawPacket.front().data);
-        counter_raw_data_sent += queueSendRawPacket.front().data.size();
+        int size = queueSendRawPacket.front().data.size();
+        counter_raw_data_sent += size;
         queueSendRawPacket.pop();
+        return size;
     }
     else
     {
@@ -561,6 +561,7 @@ void Task::sendOneRawData(void)
         // Pop packet or let it get full and go to exception??
         // Pop it by now. If it's on COMMAND mode it's known raw packet won't be transmitted and make no reason to delivery an old raw packet if it switches back to DATA.
         queueSendRawPacket.pop();
+        return 0;
     }
 }
 

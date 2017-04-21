@@ -35,6 +35,8 @@ task_context "Task" do
    # Set interface with device. SERIAL or ETHERNET.
    # The interface type may be different from the one set by io_port, in case there is an intermediary, i.e. sys_mgm.
    property "interface", "/usbl_evologics/InterfaceType", :SERIAL
+   # Granularity (updateHook() minimum interval in ms, default: 500ms)
+   property "granularity", "uint32_t", 500
 
    # Source Level. Defines the Sound Pressure Level (SPL) in transmission mode.
    #  MAXIMUM = 0. SPL = 184 dB. To be set carefully.

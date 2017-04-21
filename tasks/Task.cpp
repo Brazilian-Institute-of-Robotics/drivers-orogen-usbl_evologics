@@ -8,15 +8,15 @@ using namespace usbl_evologics;
 
 Task::Task(std::string const& name)
     : TaskBase(name),
+      counter_raw_data_sent(0),
+      counter_raw_data_received(0),
+      counter_raw_data_dropped(0),
       counter_message_delivered(0),
       counter_message_failed(0),
       counter_message_received(0),
       counter_message_sent(0),
       counter_message_dropped(0),
-      counter_message_canceled(0),
-      counter_raw_data_sent(0),
-      counter_raw_data_received(0),
-      counter_raw_data_dropped(0)
+      counter_message_canceled(0)
 {
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));
@@ -24,15 +24,15 @@ Task::Task(std::string const& name)
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     : TaskBase(name, engine),
+      counter_raw_data_sent(0),
+      counter_raw_data_received(0),
+      counter_raw_data_dropped(0),
       counter_message_delivered(0),
       counter_message_failed(0),
       counter_message_received(0),
       counter_message_sent(0),
       counter_message_dropped(0),
-      counter_message_canceled(0),
-      counter_raw_data_sent(0),
-      counter_raw_data_received(0),
-      counter_raw_data_dropped(0)
+      counter_message_canceled(0)
 {
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));

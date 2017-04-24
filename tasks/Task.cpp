@@ -20,6 +20,7 @@ Task::Task(std::string const& name)
 {
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));
+    _granularity.set(base::Time::fromMilliseconds(500));
 }
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
@@ -36,6 +37,7 @@ Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
 {
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));
+    _granularity.set(base::Time::fromMilliseconds(500));
 }
 
 Task::~Task()
@@ -109,7 +111,7 @@ bool Task::configureHook()
 
     RTT::extras::FileDescriptorActivity* fd_activity = getActivity<RTT::extras::FileDescriptorActivity>();
     if(fd_activity)
-        fd_activity->setTimeout(_granularity.value());
+        fd_activity->setTimeout(_granularity.get().toMilliseconds());
 
     // Switch device to data mode.
     // If device is already in data mode, it will transmit the command 'ATO' as raw data

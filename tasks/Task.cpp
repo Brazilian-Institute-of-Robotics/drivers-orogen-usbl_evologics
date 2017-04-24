@@ -8,34 +8,36 @@ using namespace usbl_evologics;
 
 Task::Task(std::string const& name)
     : TaskBase(name),
+      counter_raw_data_sent(0),
+      counter_raw_data_received(0),
+      counter_raw_data_dropped(0),
       counter_message_delivered(0),
       counter_message_failed(0),
       counter_message_received(0),
       counter_message_sent(0),
       counter_message_dropped(0),
-      counter_message_canceled(0),
-      counter_raw_data_sent(0),
-      counter_raw_data_received(0),
-      counter_raw_data_dropped(0)
+      counter_message_canceled(0)
 {
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));
+    _granularity.set(base::Time::fromMilliseconds(500));
 }
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine)
     : TaskBase(name, engine),
+      counter_raw_data_sent(0),
+      counter_raw_data_received(0),
+      counter_raw_data_dropped(0),
       counter_message_delivered(0),
       counter_message_failed(0),
       counter_message_received(0),
       counter_message_sent(0),
       counter_message_dropped(0),
-      counter_message_canceled(0),
-      counter_raw_data_sent(0),
-      counter_raw_data_received(0),
-      counter_raw_data_dropped(0)
+      counter_message_canceled(0)
 {
     _status_period.set(base::Time::fromSeconds(1));
     _timeout_delivery_report.set(base::Time::fromSeconds(10));
+    _granularity.set(base::Time::fromMilliseconds(500));
 }
 
 Task::~Task()
@@ -109,7 +111,7 @@ bool Task::configureHook()
 
     RTT::extras::FileDescriptorActivity* fd_activity = getActivity<RTT::extras::FileDescriptorActivity>();
     if(fd_activity)
-        fd_activity->setTimeout(_status_period.get().toMilliseconds());
+        fd_activity->setTimeout(_granularity.get().toMilliseconds());
 
     // Switch device to data mode.
     // If device is already in data mode, it will transmit the command 'ATO' as raw data
@@ -174,8 +176,38 @@ void Task::updateHook()
 {
     TaskBase::updateHook();
 
-    AcousticConnection connection_status = driver->getConnectionStatus();
+    // Process received notification from device
+    while(driver->hasNotification())
+        processNotification(driver->getNotification());
+    
+    // Process raw_data from remote device
+    while(driver->hasRawData())
+    {
+        iodrivers_base::RawPacket raw_packet_buffer;
+        raw_packet_buffer.time = base::Time::now();
+        raw_packet_buffer.data = driver->getRawData();
+        _raw_data_output.write(raw_packet_buffer);
+        counter_raw_data_received += raw_packet_buffer.data.size();
+    }
 
+    // Buffer Message, once usbl doesn't queue messages, and it doesn't send several messages in a row.
+    SendIM send_IM;
+    while(_message_input.read(send_IM) == RTT::NewData)
+        enqueueSendIM(send_IM);
+    
+    // Enqueue Raw data to be transmitted
+    iodrivers_base::RawPacket raw_data_input;
+    while(_raw_data_input.read(raw_data_input) == RTT::NewData)
+        enqueueSendRawPacket(raw_data_input, current_settings);
+
+    // If there is no status to be updated and no data/IM to be sent, we leave the hook
+    if (((base::Time::now() - last_status) <= _status_period.get())
+        && queueSendIM.empty() && queueSendRawPacket.empty())
+        return;
+
+    // Get connection status and reuse it
+    AcousticConnection connection_status = driver->getConnectionStatus();
+    
     // An internal error has occurred on device. Manual says to reset the device.
     if(connection_status.status == OFFLINE_ALARM)
     {
@@ -197,16 +229,6 @@ void Task::updateHook()
             RTT::log(RTT::Info) << "Current Source Level: \"" << driver->getSourceLevel() << "\"" << RTT::endlog();
     }
 
-    // Buffer Message, once usbl doesn't queue messages, and it doesn't send several messages in a row.
-    SendIM send_IM;
-    while(_message_input.read(send_IM) == RTT::NewData)
-        enqueueSendIM(send_IM);
-
-    // Enqueue Raw data to be transmitted
-    iodrivers_base::RawPacket raw_data_input;
-    while(_raw_data_input.read(raw_data_input) == RTT::NewData)
-        enqueueSendRawPacket(raw_data_input, current_settings);
-
     // Transmit enqueued Instant Message
     while( isSendIMAvbl(connection_status))
         sendOneIM();
@@ -214,20 +236,6 @@ void Task::updateHook()
     // Transmit enqueued Raw Data. Consider just the first channel
     while( isSendRawDataAvbl(connection_status))
         connection_status.freeBuffer[0] += sendOneRawData();
-
-    // Process received notification from device
-    while(driver->hasNotification())
-        processNotification(driver->getNotification());
-
-    // Process raw_data from remote device
-    while(driver->hasRawData())
-    {
-        iodrivers_base::RawPacket raw_packet_buffer;
-        raw_packet_buffer.time = base::Time::now();
-        raw_packet_buffer.data = driver->getRawData();
-        _raw_data_output.write(raw_packet_buffer);
-        counter_raw_data_received += raw_packet_buffer.data.size();
-    }
 }
 void Task::errorHook()
 {

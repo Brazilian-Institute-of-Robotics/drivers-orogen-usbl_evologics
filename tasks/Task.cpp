@@ -207,6 +207,7 @@ void Task::updateHook()
 
     // Get connection status and reuse it
     AcousticConnection connection_status = driver->getConnectionStatus();
+    updateState(connection_status);
     
     // An internal error has occurred on device. Manual says to reset the device.
     if(connection_status.status == OFFLINE_ALARM)
@@ -233,9 +234,14 @@ void Task::updateHook()
     while( isSendIMAvbl(connection_status))
         sendOneIM();
 
-    // Transmit enqueued Raw Data. Consider just the first channel
-    while( isSendRawDataAvbl(connection_status))
-        connection_status.freeBuffer[0] += sendOneRawData();
+    // Transmit enqueued Raw Data. Drop if not possible.
+    while(!queueSendRawPacket.empty())
+    {
+        if(isSendRawDataAvbl(connection_status))
+            connection_status.freeBuffer[0] += sendOneRawData();
+        else
+            dropData(connection_status);
+    }
 }
 void Task::errorHook()
 {
@@ -626,4 +632,40 @@ void Task::outputDroppedData(iodrivers_base::RawPacket const& dropped_data, std:
     drop_data.reason = reason;
     drop_data.dataDropped = counter_raw_data_dropped;
     _dropped_raw_data.write(drop_data);
+}
+
+void Task::dropData(AcousticConnection const& connection)
+{
+    if(queueSendRawPacket.empty())
+        return;
+    std::string reason;
+    if( connection.status != ONLINE && connection.status != INITIATION_ESTABLISH && connection.status != INITIATION_LISTEN )
+        reason = "CONNECTION_STATUS";
+    // Check free buffer size
+    else if( connection.freeBuffer[0] < queueSendRawPacket.front().data.size())
+        reason = "FULL_USBL_BUFFER";
+    else
+        reason = "UNKNOWN";
+    outputDroppedData(queueSendRawPacket.front(), reason);
+    queueSendRawPacket.pop();
+}
+
+void Task::updateState(AcousticConnection const& connection)
+{
+    if( connection.status != ONLINE && connection.status != INITIATION_ESTABLISH && connection.status != INITIATION_LISTEN )
+    {
+        if(state() != UNEXPECTED_ACOUSTIC_CONNECTION)
+            state(UNEXPECTED_ACOUSTIC_CONNECTION);
+        return;
+    }
+    // Consider FULL_USBL_BUFFER if less than 5% is free.
+    if( connection.freeBuffer[0] < 0.05* current_settings.poolSize[0])
+    {
+        if(state() != FULL_USBL_BUFFER)
+            state(FULL_USBL_BUFFER);
+        return;
+    }
+    if(state() != RUNNING)
+        state(RUNNING);
+    return;
 }

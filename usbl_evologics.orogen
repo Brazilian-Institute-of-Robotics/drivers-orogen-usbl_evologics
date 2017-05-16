@@ -100,7 +100,8 @@ task_context "Task" do
    # Restore Factory Settings.
    operation('restoreFactorySettings')
   
-   runtime_states   :HUGE_RAW_DATA_INPUT, :HUGE_INSTANT_MESSAGE, :FULL_RAW_DATA_QUEUE, :FULL_IM_QUEUE
+   runtime_states   :HUGE_RAW_DATA_INPUT, :HUGE_INSTANT_MESSAGE, :FULL_RAW_DATA_QUEUE,
+                    :FULL_IM_QUEUE, :FULL_USBL_BUFFER, :UNEXPECTED_ACOUSTIC_CONNECTION
    exception_states :DEVICE_INTERNAL_ERROR, :MALICIOUS_SEQUENCE_IN_RAW_DATA, :OLD_ACK
 
    port_driven

@@ -338,6 +338,18 @@ namespace usbl_evologics {
          * @param reason to be dropped.
          */
         void outputDroppedData(iodrivers_base::RawPacket const& dropped_data, std::string const &reason);
+
+        /** Drop one raw data from queue
+         *
+         * @param connection gives the reasoni for dropping
+         */
+        void dropData(AcousticConnection const& connection);
+
+        /** update State according connection status
+         *
+         * @param connection check connection and free buffer
+         */
+        void updateState(AcousticConnection const& connection);
     };
 }
 

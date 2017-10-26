@@ -652,7 +652,7 @@ void Task::dropData(AcousticConnection const& connection)
 
 void Task::updateState(AcousticConnection const& connection)
 {
-    if( connection.status != ONLINE && connection.status != INITIATION_ESTABLISH && connection.status != INITIATION_LISTEN )
+    if( connection.status == BACKOFF || connection.status == NOISE || connection.status == DEAF )
     {
         if(state() != UNEXPECTED_ACOUSTIC_CONNECTION)
             state(UNEXPECTED_ACOUSTIC_CONNECTION);

@@ -75,6 +75,11 @@ namespace usbl_evologics {
          */
         virtual void clearTransmissionBuffer(void);
 
+        /** Drop burst data and terminate the acoustic connection
+         *
+         */
+        virtual void clearRawDataBuffer(void);
+
         /** Store current settings.
          *
          */

@@ -74,7 +74,15 @@ void Task::resetDevice(void)
 // Clear the transmission buffer - drop raw data and instant message
 void Task::clearTransmissionBuffer(void)
 {
+    RTT::log(RTT::Info) << "Clear transmission buffer. Drop raw data and IM"<< RTT::endlog();
     driver->resetDevice(SEND_BUFFER);
+}
+
+// Drop burst data and terminate the acoustic connection
+void Task::clearRawDataBuffer(void)
+{
+    RTT::log(RTT::Info) << "Clear raw data buffer."<< RTT::endlog();
+    driver->resetDevice(ACOUSTIC_CONNECTION);
 }
 
 // Store current settings.

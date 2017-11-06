@@ -93,7 +93,10 @@ task_context "Task" do
   
    # Clear the transmission buffer - drop raw data and instant message
    operation('clearTransmissionBuffer')
-  
+
+   # Drop burst data and terminate the acoustic connection
+   operation('clearRawDataBuffer')
+
    # Store current settings.
    operation('storeSettings')
   

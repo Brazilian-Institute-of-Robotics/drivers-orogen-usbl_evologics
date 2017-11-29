@@ -2,9 +2,11 @@
 
 #include "Task.hpp"
 #include <rtt/extras/FileDescriptorActivity.hpp>
+#include <iodrivers_base/ConfigureGuard.hpp>
 
 using namespace std;
 using namespace usbl_evologics;
+using iodrivers_base::ConfigureGuard;
 
 Task::Task(std::string const& name)
     : TaskBase(name),
@@ -104,6 +106,9 @@ void Task::restoreFactorySettings(void)
 
 bool Task::configureHook()
 {
+    // Guard the configureHook in case of exception
+    ConfigureGuard guard(this);
+
     // Creating the driver object
     driver.reset(new Driver(COMMAND));
     if (!_io_port.get().empty())
@@ -166,6 +171,8 @@ bool Task::configureHook()
             <<"Physical and Data-Link layer protocol: "<< device_info.accousticVersion
             << "Manufacturer: " << device_info.manufacturer <<RTT::endlog();
 
+    // No exception in configureHook
+    guard.commit();
     return true;
 }
 bool Task::startHook()
